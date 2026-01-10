@@ -35,6 +35,22 @@
  vertical-align: middle;
 }
 
+/* BAR HORIZONTAL REKAP */
+.progress-rekap {
+ height: 18px;
+ background-color: #e5e7eb;
+ border-radius: 4px;
+ overflow: hidden;
+}
+.progress-rekap-inner {
+ height: 100%;
+ text-align: center;
+ color: #fff;
+ line-height: 18px;
+ font-size: 0.75rem;
+}
+
+/* MOBILE */
 @media (max-width:768px){
  th,td { font-size:0.75rem; }
  h2 { font-size:1rem; }
@@ -214,12 +230,19 @@ function buatRekap(){
  tb.innerHTML="";
  Object.keys(m).forEach(k=>{
   const avg=Math.round(m[k].s/m[k].t);
+  const barColor = warna(avg);
   tb.innerHTML+=`
   <tr>
    <td class="kecamatan" onclick="tampilSekolah('${k}')">${k}</td>
    <td class="tengah">${m[k].t}</td>
-   <td class="tengah progress-${warna(avg)}">${avg}%</td>
-   <td class="tengah">${keterangan(avg)}</td>
+   <td class="tengah progress-${barColor}">${avg}%</td>
+   <td>
+     <div class="progress-rekap">
+       <div class="progress-rekap-inner progress-bar-${barColor}" style="width:${avg}%">
+         ${avg===0?'':keterangan(avg)}
+       </div>
+     </div>
+   </td>
   </tr>`;
  });
 }
@@ -287,7 +310,7 @@ function renderPagination(){
 /* SEARCH */
 function searchSekolah(){
  const q=document.getElementById("searchInput").value.toLowerCase();
- filteredData=filteredData.filter(r=>
+ filteredData=layerData.filter(r=>
   r[2].toLowerCase().includes(q) || String(r[1]).includes(q)
  );
  currentPage=1;
