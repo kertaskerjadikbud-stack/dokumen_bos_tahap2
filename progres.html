@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<title>Dashboard Monitoring Progres Sekolah</title>
+<title>Dashboard Monitoring Progres KK- BOS Belanja Modal</title>
 
 <!-- Bootstrap -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -29,7 +29,7 @@
 
 <div class="container bg-white shadow rounded p-3">
 
-<h2 class="text-xl font-bold mb-2">📊 Dashboard Monitoring Progres Sekolah</h2>
+<h2 class="text-xl font-bold mb-2">📊 Dashboard Monitoring Progres KK- BOS Belanja Modal</h2>
 
 <!-- MULTI LAYER -->
 <div class="flex gap-2 mb-3">
@@ -78,11 +78,11 @@
 <th>NPSN</th>
 <th>Nama</th>
 <th>Kelurahan</th>
-<th>Kertas</th>
-<th>E-BMD</th>
-<th>Dok</th>
-<th>Status</th>
-<th>%</th>
+<th>INPUT KERTAS KERJA</th>
+<th>INPUT E-BMD</th>
+<th>APLOUD DOKUMEN PENDUKUNG</th>
+<th>STATUS</th>
+<th>PERSENTASE</th>
 </tr>
 </thead>
 <tbody></tbody>
@@ -107,14 +107,23 @@ let allData=[], layerData=[], filteredData=[];
 let currentLayer='ALL', currentPage=1;
 const rowsPerPage=10;
 
-/* ===== WARNA PROGRES ===== */
+/* ===== WARNA ===== */
 function warna(p){
  if(p>=80) return 'progress-green';
  if(p>=50) return 'progress-yellow';
  return 'progress-red';
 }
 
-/* ===== LOAD DATA ===== */
+/* ===== HITUNG PROGRES SEKOLAH ===== */
+function hitungProgres(r){
+ let total = 0;
+ if(r[7]===true) total++;
+ if(r[8]===true) total++;
+ if(r[9]===true) total++;
+ return Math.round((total/3)*100);
+}
+
+/* ===== LOAD ===== */
 function loadData(){
  fetch(sheetURL).then(r=>r.text()).then(t=>{
   const j=JSON.parse(t.substr(47).slice(0,-2));
@@ -123,7 +132,7 @@ function loadData(){
  });
 }
 
-/* ===== SET LAYER ===== */
+/* ===== LAYER ===== */
 function setLayer(layer,btn){
  currentLayer=layer;
  document.querySelectorAll('.btn-outline-primary')
@@ -132,19 +141,12 @@ function setLayer(layer,btn){
  applyLayer();
 }
 
-/* ===== APPLY LAYER ===== */
 function applyLayer(){
- if(currentLayer==='ALL'){
-  layerData=[...allData];
- } else {
-  layerData=allData.filter(r =>
-   String(r[2]).toUpperCase().includes(currentLayer)
-  );
- }
+ layerData = currentLayer==='ALL'
+  ? [...allData]
+  : allData.filter(r=>String(r[2]).toUpperCase().includes(currentLayer));
  buatRekap();
  drawChart();
- document.getElementById("judulSekolah").innerText=
-  "Daftar Sekolah ("+currentLayer+")";
  document.querySelector("#tabelSekolah tbody").innerHTML="";
 }
 
@@ -152,7 +154,8 @@ function applyLayer(){
 function buatRekap(){
  const map={};
  layerData.forEach(r=>{
-  const k=r[6], p=parseFloat(r[11])||0;
+  const k=r[6];
+  const p=hitungProgres(r);
   if(!map[k]) map[k]={t:0,s:0};
   map[k].t++; map[k].s+=p;
  });
@@ -178,7 +181,7 @@ function drawChart(){
 
  const m={};
  layerData.forEach(r=>{
-  const k=r[6], p=parseFloat(r[11])||0;
+  const k=r[6], p=hitungProgres(r);
   if(!m[k]) m[k]={t:0,s:0};
   m[k].t++; m[k].s+=p;
  });
@@ -188,23 +191,16 @@ function drawChart(){
  });
 
  new google.visualization.ColumnChart(chartKecamatan)
- .draw(d,{
-  title:'Progres Kecamatan ('+currentLayer+')',
-  legend:'none',
-  colors:['#2563eb']
- });
+ .draw(d,{legend:'none',colors:['#2563eb']});
 }
 
-/* ===== TAMPIL SEKOLAH ===== */
+/* ===== SEKOLAH ===== */
 function tampilSekolah(k){
- document.getElementById("judulSekolah").innerText=
-  "Daftar Sekolah "+k+" ("+currentLayer+")";
  filteredData=layerData.filter(r=>r[6]==k);
  currentPage=1;
  renderTable();
 }
 
-/* ===== RENDER TABLE ===== */
 function renderTable(){
  const start=(currentPage-1)*rowsPerPage;
  const pageData=filteredData.slice(start,start+rowsPerPage);
@@ -212,28 +208,23 @@ function renderTable(){
  tb.innerHTML="";
 
  pageData.forEach(r=>{
-  const c1=r[7]===true, c2=r[8]===true, c3=r[9]===true;
-  const ok=c1&&c2&&c3;
-  const p=parseFloat(r[11])||0;
-
+  const p=hitungProgres(r);
   tb.innerHTML+=`
    <tr>
     <td>${r[0]}</td>
     <td>${r[1]}</td>
     <td>${r[2]}</td>
     <td>${r[4]}</td>
-    <td>${c1?'✔':''}</td>
-    <td>${c2?'✔':''}</td>
-    <td>${c3?'✔':''}</td>
-    <td>${ok?r[10]:''}</td>
-    <td class="${warna(p)}">${ok?p+'%':''}</td>
+    <td>${r[7]===true?'✔':''}</td>
+    <td>${r[8]===true?'✔':''}</td>
+    <td>${r[9]===true?'✔':''}</td>
+    <td>${p===100?'Lengkap':'Proses'}</td>
+    <td class="${warna(p)}">${p}%</td>
    </tr>`;
  });
-
  renderPagination();
 }
 
-/* ===== PAGINATION ===== */
 function renderPagination(){
  const p=document.getElementById("pagination");
  p.innerHTML="";
@@ -250,8 +241,7 @@ function renderPagination(){
 function searchSekolah(){
  const q=document.getElementById("searchInput").value.toLowerCase();
  filteredData=filteredData.filter(r =>
-  r[2].toLowerCase().includes(q) ||
-  String(r[1]).includes(q)
+  r[2].toLowerCase().includes(q) || String(r[1]).includes(q)
  );
  currentPage=1;
  renderTable();
@@ -261,7 +251,6 @@ function searchSekolah(){
 function exportExcel(){
  XLSX.writeFile(XLSX.utils.table_to_book(tabelSekolah),'sekolah.xlsx');
 }
-
 function exportPDF(){
  html2pdf().from(document.querySelector(".container"))
  .set({margin:5,filename:'laporan_sekolah.pdf'}).save();
