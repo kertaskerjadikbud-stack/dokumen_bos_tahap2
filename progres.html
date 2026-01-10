@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard Monitoring Progres Sekolah</title>
+
+<!-- Bootstrap -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<!-- Tailwind -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Google Chart -->
+<script src="https://www.gstatic.com/charts/loader.js"></script>
+
+<!-- Export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+<style>
+.kecamatan { cursor:pointer; color:#2563eb; }
+.progress-red { color:#dc2626; font-weight:bold; }
+.progress-yellow { color:#ca8a04; font-weight:bold; }
+.progress-green { color:#16a34a; font-weight:bold; }
+</style>
+</head>
+
+<body class="bg-gray-100 p-2 md:p-4">
+
+<div class="container bg-white shadow rounded p-3">
+
+<h2 class="text-xl font-bold mb-2">📊 Dashboard Monitoring Progres Sekolah</h2>
+
+<!-- MULTI LAYER -->
+<div class="flex gap-2 mb-3">
+  <button class="btn btn-outline-primary btn-sm active" onclick="setLayer('ALL',this)">SEMUA</button>
+  <button class="btn btn-outline-primary btn-sm" onclick="setLayer('SD',this)">SD</button>
+  <button class="btn btn-outline-primary btn-sm" onclick="setLayer('SMP',this)">SMP</button>
+</div>
+
+<!-- CHART -->
+<div id="chartKecamatan" class="w-full h-[300px]"></div>
+
+<!-- REKAP -->
+<div class="table-responsive mt-2">
+<table class="table table-bordered table-sm" id="rekapKecamatan">
+<thead class="table-dark">
+<tr>
+<th>Kecamatan</th>
+<th>Jumlah Sekolah</th>
+<th>Progres</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+</div>
+
+<hr class="my-3">
+
+<!-- HEADER SEKOLAH -->
+<div class="flex flex-col md:flex-row md:justify-between gap-2 mb-2">
+<h3 id="judulSekolah" class="font-bold text-lg">Daftar Sekolah</h3>
+
+<div class="flex gap-2">
+<input type="text" id="searchInput" class="form-control form-control-sm"
+ placeholder="🔍 Cari sekolah / NPSN" onkeyup="searchSekolah()">
+<button class="btn btn-success btn-sm" onclick="exportExcel()">Excel</button>
+<button class="btn btn-danger btn-sm" onclick="exportPDF()">PDF</button>
+</div>
+</div>
+
+<!-- TABEL SEKOLAH -->
+<div class="table-responsive">
+<table class="table table-bordered table-hover table-sm" id="tabelSekolah">
+<thead class="table-secondary">
+<tr>
+<th>No</th>
+<th>NPSN</th>
+<th>Nama</th>
+<th>Kelurahan</th>
+<th>Kertas</th>
+<th>E-BMD</th>
+<th>Dok</th>
+<th>Status</th>
+<th>%</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+</div>
+
+<!-- PAGINATION -->
+<nav>
+<ul class="pagination pagination-sm justify-content-center" id="pagination"></ul>
+</nav>
+
+</div>
+
+<script>
+google.charts.load('current', {'packages':['corechart']});
+google.charts.setOnLoadCallback(loadData);
+
+const sheetURL =
+"https://docs.google.com/spreadsheets/d/1B8VixaZ5vbe3naEy-uQPWdisGl1rHEYRqlPqIcIhNJ4/gviz/tq?sheet=Sheet1";
+
+let allData=[], layerData=[], filteredData=[];
+let currentLayer='ALL', currentPage=1;
+const rowsPerPage=10;
+
+/* ===== WARNA PROGRES ===== */
+function warna(p){
+ if(p>=80) return 'progress-green';
+ if(p>=50) return 'progress-yellow';
+ return 'progress-red';
+}
+
+/* ===== LOAD DATA ===== */
+function loadData(){
+ fetch(sheetURL).then(r=>r.text()).then(t=>{
+  const j=JSON.parse(t.substr(47).slice(0,-2));
+  allData=j.table.rows.map(r=>r.c.map(c=>c?c.v:""));
+  applyLayer();
+ });
+}
+
+/* ===== SET LAYER ===== */
+function setLayer(layer,btn){
+ currentLayer=layer;
+ document.querySelectorAll('.btn-outline-primary')
+  .forEach(b=>b.classList.remove('active'));
+ btn.classList.add('active');
+ applyLayer();
+}
+
+/* ===== APPLY LAYER ===== */
+function applyLayer(){
+ if(currentLayer==='ALL'){
+  layerData=[...allData];
+ } else {
+  layerData=allData.filter(r =>
+   String(r[2]).toUpperCase().includes(currentLayer)
+  );
+ }
+ buatRekap();
+ drawChart();
+ document.getElementById("judulSekolah").innerText=
+  "Daftar Sekolah ("+currentLayer+")";
+ document.querySelector("#tabelSekolah tbody").innerHTML="";
+}
+
+/* ===== REKAP ===== */
+function buatRekap(){
+ const map={};
+ layerData.forEach(r=>{
+  const k=r[6], p=parseFloat(r[11])||0;
+  if(!map[k]) map[k]={t:0,s:0};
+  map[k].t++; map[k].s+=p;
+ });
+
+ const tb=document.querySelector("#rekapKecamatan tbody");
+ tb.innerHTML="";
+ Object.keys(map).forEach(k=>{
+  const avg=(map[k].s/map[k].t).toFixed(1);
+  tb.innerHTML+=`
+   <tr>
+    <td class="kecamatan" onclick="tampilSekolah('${k}')">${k}</td>
+    <td>${map[k].t}</td>
+    <td class="${warna(avg)}">${avg}%</td>
+   </tr>`;
+ });
+}
+
+/* ===== CHART ===== */
+function drawChart(){
+ const d=new google.visualization.DataTable();
+ d.addColumn('string','Kecamatan');
+ d.addColumn('number','Progres');
+
+ const m={};
+ layerData.forEach(r=>{
+  const k=r[6], p=parseFloat(r[11])||0;
+  if(!m[k]) m[k]={t:0,s:0};
+  m[k].t++; m[k].s+=p;
+ });
+
+ Object.keys(m).forEach(k=>{
+  d.addRow([k, m[k].s/m[k].t]);
+ });
+
+ new google.visualization.ColumnChart(chartKecamatan)
+ .draw(d,{
+  title:'Progres Kecamatan ('+currentLayer+')',
+  legend:'none',
+  colors:['#2563eb']
+ });
+}
+
+/* ===== TAMPIL SEKOLAH ===== */
+function tampilSekolah(k){
+ document.getElementById("judulSekolah").innerText=
+  "Daftar Sekolah "+k+" ("+currentLayer+")";
+ filteredData=layerData.filter(r=>r[6]==k);
+ currentPage=1;
+ renderTable();
+}
+
+/* ===== RENDER TABLE ===== */
+function renderTable(){
+ const start=(currentPage-1)*rowsPerPage;
+ const pageData=filteredData.slice(start,start+rowsPerPage);
+ const tb=document.querySelector("#tabelSekolah tbody");
+ tb.innerHTML="";
+
+ pageData.forEach(r=>{
+  const c1=r[7]===true, c2=r[8]===true, c3=r[9]===true;
+  const ok=c1&&c2&&c3;
+  const p=parseFloat(r[11])||0;
+
+  tb.innerHTML+=`
+   <tr>
+    <td>${r[0]}</td>
+    <td>${r[1]}</td>
+    <td>${r[2]}</td>
+    <td>${r[4]}</td>
+    <td>${c1?'✔':''}</td>
+    <td>${c2?'✔':''}</td>
+    <td>${c3?'✔':''}</td>
+    <td>${ok?r[10]:''}</td>
+    <td class="${warna(p)}">${ok?p+'%':''}</td>
+   </tr>`;
+ });
+
+ renderPagination();
+}
+
+/* ===== PAGINATION ===== */
+function renderPagination(){
+ const p=document.getElementById("pagination");
+ p.innerHTML="";
+ const total=Math.ceil(filteredData.length/rowsPerPage);
+ for(let i=1;i<=total;i++){
+  p.innerHTML+=`
+   <li class="page-item ${i===currentPage?'active':''}">
+    <a class="page-link" href="#" onclick="currentPage=${i};renderTable()">${i}</a>
+   </li>`;
+ }
+}
+
+/* ===== SEARCH ===== */
+function searchSekolah(){
+ const q=document.getElementById("searchInput").value.toLowerCase();
+ filteredData=filteredData.filter(r =>
+  r[2].toLowerCase().includes(q) ||
+  String(r[1]).includes(q)
+ );
+ currentPage=1;
+ renderTable();
+}
+
+/* ===== EXPORT ===== */
+function exportExcel(){
+ XLSX.writeFile(XLSX.utils.table_to_book(tabelSekolah),'sekolah.xlsx');
+}
+
+function exportPDF(){
+ html2pdf().from(document.querySelector(".container"))
+ .set({margin:5,filename:'laporan_sekolah.pdf'}).save();
+}
+</script>
+
+</body>
+</html>
