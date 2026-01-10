@@ -50,11 +50,19 @@
 📊 Dashboard Monitoring Progres KK- BOS Belanja Modal
 </h2>
 
-<!-- FILTER -->
-<div class="flex justify-center md:justify-start gap-2 mb-3">
+<!-- FILTER LAYER & STATUS -->
+<div class="flex flex-wrap justify-center md:justify-start gap-2 mb-3">
 <button class="btn btn-outline-primary btn-sm active" onclick="setLayer('ALL',this)">SEMUA</button>
 <button class="btn btn-outline-primary btn-sm" onclick="setLayer('SD',this)">SD</button>
 <button class="btn btn-outline-primary btn-sm" onclick="setLayer('SMP',this)">SMP</button>
+
+<select class="form-select form-select-sm w-auto" onchange="filterStatus(this.value)">
+  <option value="ALL">Semua Status</option>
+  <option value="0">0%</option>
+  <option value="33">33%</option>
+  <option value="67">67%</option>
+  <option value="100">100%</option>
+</select>
 </div>
 
 <!-- CHART -->
@@ -68,6 +76,7 @@
 <th>Kecamatan</th>
 <th>Jumlah</th>
 <th>Progres</th>
+<th>Keterangan</th>
 </tr>
 </thead>
 <tbody id="rekapKecamatan"></tbody>
@@ -125,7 +134,7 @@ const sheetURL =
 "https://docs.google.com/spreadsheets/d/1B8VixaZ5vbe3naEy-uQPWdisGl1rHEYRqlPqIcIhNJ4/gviz/tq?sheet=Sheet1";
 
 let allData=[], layerData=[], filteredData=[];
-let currentLayer='ALL', currentPage=1;
+let currentLayer='ALL', currentStatus='ALL', currentPage=1;
 const rowsPerPage=8;
 
 /* HITUNG PROGRES */
@@ -143,6 +152,13 @@ function warna(p){
  return 'red';
 }
 
+function keterangan(p){
+ if(p===100) return 'Selesai';
+ if(p>=67) return 'Sebagian';
+ if(p>=33) return 'Sedikit';
+ return 'Belum Mulai';
+}
+
 /* LOAD DATA */
 function loadData(){
  fetch(sheetURL).then(r=>r.text()).then(t=>{
@@ -152,7 +168,7 @@ function loadData(){
  });
 }
 
-/* FILTER */
+/* FILTER LAYER */
 function setLayer(l,b){
  currentLayer=l;
  document.querySelectorAll('.btn-outline-primary')
@@ -161,10 +177,26 @@ function setLayer(l,b){
  applyLayer();
 }
 
+function filterStatus(s){
+ currentStatus = s;
+ applyLayer();
+}
+
+/* APPLY LAYER & STATUS FILTER */
 function applyLayer(){
  layerData=currentLayer==='ALL'
   ? allData
   : allData.filter(r=>String(r[2]).toUpperCase().includes(currentLayer));
+
+ if(currentStatus !== 'ALL'){
+   layerData = layerData.filter(r => {
+     const p = hitungProgres(r);
+     if(currentStatus == '33') return p>=33 && p<67;
+     if(currentStatus == '67') return p>=67 && p<100;
+     return p==parseInt(currentStatus);
+   });
+ }
+
  buatRekap();
  drawChart();
  document.getElementById("tabelSekolah").innerHTML="";
@@ -181,12 +213,13 @@ function buatRekap(){
  const tb=document.getElementById("rekapKecamatan");
  tb.innerHTML="";
  Object.keys(m).forEach(k=>{
-  const avg=(m[k].s/m[k].t).toFixed(1);
+  const avg=Math.round(m[k].s/m[k].t);
   tb.innerHTML+=`
   <tr>
    <td class="kecamatan" onclick="tampilSekolah('${k}')">${k}</td>
    <td class="tengah">${m[k].t}</td>
    <td class="tengah progress-${warna(avg)}">${avg}%</td>
+   <td class="tengah">${keterangan(avg)}</td>
   </tr>`;
  });
 }
@@ -231,11 +264,7 @@ function renderTable(){
    <td class="tengah">${r[7]?'✔':''}</td>
    <td class="tengah">${r[8]?'✔':''}</td>
    <td class="tengah">${r[9]?'✔':''}</td>
-   <td class="align-middle">
-    <div class="progress" style="height:12px">
-     <div class="progress-bar progress-bar-${w}" style="width:${p}%"></div>
-    </div>
-   </td>
+   <td class="align-middle">${keterangan(p)}</td>
    <td class="tengah progress-${w}">${p}%</td>
   </tr>`;
  });
