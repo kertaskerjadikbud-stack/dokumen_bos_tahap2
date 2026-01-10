@@ -2,6 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard Monitoring Progres KK- BOS Belanja Modal</title>
 
 <!-- Bootstrap -->
@@ -19,51 +20,64 @@
 
 <style>
 .kecamatan { cursor:pointer; color:#2563eb; }
-.progress-red { color:#dc2626; font-weight:bold; }
-.progress-yellow { color:#ca8a04; font-weight:bold; }
-.progress-green { color:#16a34a; font-weight:bold; }
+.progress-red { color:#dc2626; }
+.progress-yellow { color:#ca8a04; }
+.progress-green { color:#16a34a; }
+
+.progress-bar-red { background:#dc2626; }
+.progress-bar-yellow { background:#facc15; }
+.progress-bar-green { background:#16a34a; }
+
+@media (max-width: 768px){
+ h2 { font-size:1rem }
+ th,td { font-size:0.75rem }
+}
 </style>
 </head>
 
-<body class="bg-gray-100 p-2 md:p-4">
+<body class="bg-gray-100 p-1 md:p-4">
 
-<div class="container bg-white shadow rounded p-3">
+<div class="container bg-white shadow rounded p-2 md:p-3">
 
-<h2 class="text-xl font-bold mb-2">📊 Dashboard Monitoring Progres KK- BOS Belanja Modal</h2>
+<h2 class="font-bold mb-2 text-center md:text-left">
+📊 Dashboard Monitoring Progres KK- BOS Belanja Modal
+</h2>
 
 <!-- MULTI LAYER -->
-<div class="flex gap-2 mb-3">
-  <button class="btn btn-outline-primary btn-sm active" onclick="setLayer('ALL',this)">SEMUA</button>
-  <button class="btn btn-outline-primary btn-sm" onclick="setLayer('SD',this)">SD</button>
-  <button class="btn btn-outline-primary btn-sm" onclick="setLayer('SMP',this)">SMP</button>
+<div class="flex justify-center md:justify-start gap-2 mb-3">
+<button class="btn btn-outline-primary btn-sm active" onclick="setLayer('ALL',this)">SEMUA</button>
+<button class="btn btn-outline-primary btn-sm" onclick="setLayer('SD',this)">SD</button>
+<button class="btn btn-outline-primary btn-sm" onclick="setLayer('SMP',this)">SMP</button>
 </div>
 
 <!-- CHART -->
-<div id="chartKecamatan" class="w-full h-[300px]"></div>
+<div id="chartKecamatan" class="w-full h-[250px] md:h-[300px]"></div>
 
 <!-- REKAP -->
 <div class="table-responsive mt-2">
-<table class="table table-bordered table-sm" id="rekapKecamatan">
+<table class="table table-bordered table-sm">
 <thead class="table-dark">
 <tr>
 <th>Kecamatan</th>
-<th>Jumlah Sekolah</th>
+<th>Jumlah</th>
 <th>Progres</th>
 </tr>
 </thead>
-<tbody></tbody>
+<tbody id="rekapKecamatan"></tbody>
 </table>
 </div>
 
-<hr class="my-3">
+<hr class="my-2">
 
 <!-- HEADER SEKOLAH -->
 <div class="flex flex-col md:flex-row md:justify-between gap-2 mb-2">
-<h3 id="judulSekolah" class="font-bold text-lg">Daftar Sekolah</h3>
+<h3 id="judulSekolah" class="font-bold text-sm md:text-lg text-center md:text-left">
+Daftar Sekolah
+</h3>
 
-<div class="flex gap-2">
+<div class="flex gap-1 justify-center md:justify-end">
 <input type="text" id="searchInput" class="form-control form-control-sm"
- placeholder="🔍 Cari sekolah / NPSN" onkeyup="searchSekolah()">
+ placeholder="Cari sekolah / NPSN" onkeyup="searchSekolah()">
 <button class="btn btn-success btn-sm" onclick="exportExcel()">Excel</button>
 <button class="btn btn-danger btn-sm" onclick="exportPDF()">PDF</button>
 </div>
@@ -71,21 +85,21 @@
 
 <!-- TABEL SEKOLAH -->
 <div class="table-responsive">
-<table class="table table-bordered table-hover table-sm" id="tabelSekolah">
+<table class="table table-bordered table-hover table-sm">
 <thead class="table-secondary">
 <tr>
 <th>No</th>
 <th>NPSN</th>
 <th>Nama</th>
 <th>Kelurahan</th>
-<th>INPUT KERTAS KERJA</th>
-<th>INPUT E-BMD</th>
-<th>APLOUD DOKUMEN PENDUKUNG</th>
-<th>STATUS</th>
-<th>PERSENTASE</th>
+<th>Kertas</th>
+<th>E-BMD</th>
+<th>Dok</th>
+<th>Status</th>
+<th>%</th>
 </tr>
 </thead>
-<tbody></tbody>
+<tbody id="tabelSekolah"></tbody>
 </table>
 </div>
 
@@ -100,27 +114,24 @@
 google.charts.load('current', {'packages':['corechart']});
 google.charts.setOnLoadCallback(loadData);
 
-const sheetURL =
-"https://docs.google.com/spreadsheets/d/1B8VixaZ5vbe3naEy-uQPWdisGl1rHEYRqlPqIcIhNJ4/gviz/tq?sheet=Sheet1";
+const sheetURL="https://docs.google.com/spreadsheets/d/1B8VixaZ5vbe3naEy-uQPWdisGl1rHEYRqlPqIcIhNJ4/gviz/tq?sheet=Sheet1";
 
 let allData=[], layerData=[], filteredData=[];
 let currentLayer='ALL', currentPage=1;
-const rowsPerPage=10;
+const rowsPerPage=8;
 
-/* ===== WARNA ===== */
-function warna(p){
- if(p>=80) return 'progress-green';
- if(p>=50) return 'progress-yellow';
- return 'progress-red';
-}
-
-/* ===== HITUNG PROGRES SEKOLAH ===== */
+/* ===== PROGRES ===== */
 function hitungProgres(r){
- let total = 0;
- if(r[7]===true) total++;
- if(r[8]===true) total++;
- if(r[9]===true) total++;
- return Math.round((total/3)*100);
+ let t=0;
+ if(r[7]===true) t++;
+ if(r[8]===true) t++;
+ if(r[9]===true) t++;
+ return Math.round((t/3)*100);
+}
+function warna(p){
+ if(p>=80) return 'green';
+ if(p>=50) return 'yellow';
+ return 'red';
 }
 
 /* ===== LOAD ===== */
@@ -133,43 +144,38 @@ function loadData(){
 }
 
 /* ===== LAYER ===== */
-function setLayer(layer,btn){
- currentLayer=layer;
- document.querySelectorAll('.btn-outline-primary')
-  .forEach(b=>b.classList.remove('active'));
- btn.classList.add('active');
+function setLayer(l,b){
+ currentLayer=l;
+ document.querySelectorAll('.btn-outline-primary').forEach(x=>x.classList.remove('active'));
+ b.classList.add('active');
  applyLayer();
 }
 
 function applyLayer(){
- layerData = currentLayer==='ALL'
-  ? [...allData]
-  : allData.filter(r=>String(r[2]).toUpperCase().includes(currentLayer));
+ layerData=currentLayer==='ALL'?allData:allData.filter(r=>String(r[2]).toUpperCase().includes(currentLayer));
  buatRekap();
  drawChart();
- document.querySelector("#tabelSekolah tbody").innerHTML="";
+ document.getElementById("tabelSekolah").innerHTML="";
 }
 
 /* ===== REKAP ===== */
 function buatRekap(){
- const map={};
+ const m={};
  layerData.forEach(r=>{
-  const k=r[6];
-  const p=hitungProgres(r);
-  if(!map[k]) map[k]={t:0,s:0};
-  map[k].t++; map[k].s+=p;
+  const k=r[6], p=hitungProgres(r);
+  if(!m[k]) m[k]={t:0,s:0};
+  m[k].t++; m[k].s+=p;
  });
-
- const tb=document.querySelector("#rekapKecamatan tbody");
+ const tb=document.getElementById("rekapKecamatan");
  tb.innerHTML="";
- Object.keys(map).forEach(k=>{
-  const avg=(map[k].s/map[k].t).toFixed(1);
+ Object.keys(m).forEach(k=>{
+  const avg=(m[k].s/m[k].t).toFixed(1);
   tb.innerHTML+=`
-   <tr>
-    <td class="kecamatan" onclick="tampilSekolah('${k}')">${k}</td>
-    <td>${map[k].t}</td>
-    <td class="${warna(avg)}">${avg}%</td>
-   </tr>`;
+  <tr>
+   <td class="kecamatan" onclick="tampilSekolah('${k}')">${k}</td>
+   <td>${m[k].t}</td>
+   <td class="progress-${warna(avg)}">${avg}%</td>
+  </tr>`;
  });
 }
 
@@ -178,18 +184,13 @@ function drawChart(){
  const d=new google.visualization.DataTable();
  d.addColumn('string','Kecamatan');
  d.addColumn('number','Progres');
-
  const m={};
  layerData.forEach(r=>{
   const k=r[6], p=hitungProgres(r);
   if(!m[k]) m[k]={t:0,s:0};
   m[k].t++; m[k].s+=p;
  });
-
- Object.keys(m).forEach(k=>{
-  d.addRow([k, m[k].s/m[k].t]);
- });
-
+ Object.keys(m).forEach(k=>d.addRow([k,m[k].s/m[k].t]));
  new google.visualization.ColumnChart(chartKecamatan)
  .draw(d,{legend:'none',colors:['#2563eb']});
 }
@@ -203,57 +204,60 @@ function tampilSekolah(k){
 
 function renderTable(){
  const start=(currentPage-1)*rowsPerPage;
- const pageData=filteredData.slice(start,start+rowsPerPage);
- const tb=document.querySelector("#tabelSekolah tbody");
+ const data=filteredData.slice(start,start+rowsPerPage);
+ const tb=document.getElementById("tabelSekolah");
  tb.innerHTML="";
-
- pageData.forEach(r=>{
+ data.forEach(r=>{
   const p=hitungProgres(r);
+  const w=warna(p);
   tb.innerHTML+=`
-   <tr>
-    <td>${r[0]}</td>
-    <td>${r[1]}</td>
-    <td>${r[2]}</td>
-    <td>${r[4]}</td>
-    <td>${r[7]===true?'✔':''}</td>
-    <td>${r[8]===true?'✔':''}</td>
-    <td>${r[9]===true?'✔':''}</td>
-    <td>${p===100?'Lengkap':'Proses'}</td>
-    <td class="${warna(p)}">${p}%</td>
-   </tr>`;
+  <tr>
+   <td>${r[0]}</td>
+   <td>${r[1]}</td>
+   <td>${r[2]}</td>
+   <td>${r[4]}</td>
+   <td>${r[7]?'✔':''}</td>
+   <td>${r[8]?'✔':''}</td>
+   <td>${r[9]?'✔':''}</td>
+   <td>
+    <div class="progress" style="height:12px">
+     <div class="progress-bar progress-bar-${w}" style="width:${p}%"></div>
+    </div>
+   </td>
+   <td class="progress-${w}">${p}%</td>
+  </tr>`;
  });
  renderPagination();
 }
 
+/* ===== PAGINATION ===== */
 function renderPagination(){
  const p=document.getElementById("pagination");
  p.innerHTML="";
- const total=Math.ceil(filteredData.length/rowsPerPage);
- for(let i=1;i<=total;i++){
+ const t=Math.ceil(filteredData.length/rowsPerPage);
+ for(let i=1;i<=t;i++){
   p.innerHTML+=`
-   <li class="page-item ${i===currentPage?'active':''}">
-    <a class="page-link" href="#" onclick="currentPage=${i};renderTable()">${i}</a>
-   </li>`;
+  <li class="page-item ${i==currentPage?'active':''}">
+   <a class="page-link" href="#" onclick="currentPage=${i};renderTable()">${i}</a>
+  </li>`;
  }
 }
 
 /* ===== SEARCH ===== */
 function searchSekolah(){
  const q=document.getElementById("searchInput").value.toLowerCase();
- filteredData=filteredData.filter(r =>
-  r[2].toLowerCase().includes(q) || String(r[1]).includes(q)
- );
+ filteredData=filteredData.filter(r=>r[2].toLowerCase().includes(q)||String(r[1]).includes(q));
  currentPage=1;
  renderTable();
 }
 
 /* ===== EXPORT ===== */
 function exportExcel(){
- XLSX.writeFile(XLSX.utils.table_to_book(tabelSekolah),'sekolah.xlsx');
+ XLSX.writeFile(XLSX.utils.table_to_book(document.querySelector("table")),'sekolah.xlsx');
 }
 function exportPDF(){
  html2pdf().from(document.querySelector(".container"))
- .set({margin:5,filename:'laporan_sekolah.pdf'}).save();
+ .set({margin:5,filename:'laporan.pdf'}).save();
 }
 </script>
 
