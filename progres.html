@@ -20,6 +20,7 @@
 
 <style>
 .kecamatan { cursor:pointer; color:#2563eb; }
+
 .progress-red { color:#dc2626; }
 .progress-yellow { color:#ca8a04; }
 .progress-green { color:#16a34a; }
@@ -28,9 +29,15 @@
 .progress-bar-yellow { background:#facc15; }
 .progress-bar-green { background:#16a34a; }
 
-@media (max-width: 768px){
- h2 { font-size:1rem }
- th,td { font-size:0.75rem }
+/* CENTER CELL */
+.tengah {
+ text-align: center;
+ vertical-align: middle;
+}
+
+@media (max-width:768px){
+ th,td { font-size:0.75rem; }
+ h2 { font-size:1rem; }
 }
 </style>
 </head>
@@ -43,7 +50,7 @@
 📊 Dashboard Monitoring Progres KK- BOS Belanja Modal
 </h2>
 
-<!-- MULTI LAYER -->
+<!-- FILTER -->
 <div class="flex justify-center md:justify-start gap-2 mb-3">
 <button class="btn btn-outline-primary btn-sm active" onclick="setLayer('ALL',this)">SEMUA</button>
 <button class="btn btn-outline-primary btn-sm" onclick="setLayer('SD',this)">SD</button>
@@ -92,10 +99,10 @@ Daftar Sekolah
 <th>NPSN</th>
 <th>Nama</th>
 <th>Kelurahan</th>
-<th>Kertas</th>
-<th>E-BMD</th>
-<th>Dok</th>
-<th>Status</th>
+<th>INPUT KERTAS KERJA</th>
+<th>INPUT E-BMD</th>
+<th>APLOUD DOKUMEN</th>
+<th>STATUS</th>
 <th>%</th>
 </tr>
 </thead>
@@ -114,13 +121,14 @@ Daftar Sekolah
 google.charts.load('current', {'packages':['corechart']});
 google.charts.setOnLoadCallback(loadData);
 
-const sheetURL="https://docs.google.com/spreadsheets/d/1B8VixaZ5vbe3naEy-uQPWdisGl1rHEYRqlPqIcIhNJ4/gviz/tq?sheet=Sheet1";
+const sheetURL =
+"https://docs.google.com/spreadsheets/d/1B8VixaZ5vbe3naEy-uQPWdisGl1rHEYRqlPqIcIhNJ4/gviz/tq?sheet=Sheet1";
 
 let allData=[], layerData=[], filteredData=[];
 let currentLayer='ALL', currentPage=1;
 const rowsPerPage=8;
 
-/* ===== PROGRES ===== */
+/* HITUNG PROGRES */
 function hitungProgres(r){
  let t=0;
  if(r[7]===true) t++;
@@ -128,13 +136,14 @@ function hitungProgres(r){
  if(r[9]===true) t++;
  return Math.round((t/3)*100);
 }
+
 function warna(p){
  if(p>=80) return 'green';
  if(p>=50) return 'yellow';
  return 'red';
 }
 
-/* ===== LOAD ===== */
+/* LOAD DATA */
 function loadData(){
  fetch(sheetURL).then(r=>r.text()).then(t=>{
   const j=JSON.parse(t.substr(47).slice(0,-2));
@@ -143,22 +152,25 @@ function loadData(){
  });
 }
 
-/* ===== LAYER ===== */
+/* FILTER */
 function setLayer(l,b){
  currentLayer=l;
- document.querySelectorAll('.btn-outline-primary').forEach(x=>x.classList.remove('active'));
+ document.querySelectorAll('.btn-outline-primary')
+  .forEach(x=>x.classList.remove('active'));
  b.classList.add('active');
  applyLayer();
 }
 
 function applyLayer(){
- layerData=currentLayer==='ALL'?allData:allData.filter(r=>String(r[2]).toUpperCase().includes(currentLayer));
+ layerData=currentLayer==='ALL'
+  ? allData
+  : allData.filter(r=>String(r[2]).toUpperCase().includes(currentLayer));
  buatRekap();
  drawChart();
  document.getElementById("tabelSekolah").innerHTML="";
 }
 
-/* ===== REKAP ===== */
+/* REKAP */
 function buatRekap(){
  const m={};
  layerData.forEach(r=>{
@@ -173,13 +185,13 @@ function buatRekap(){
   tb.innerHTML+=`
   <tr>
    <td class="kecamatan" onclick="tampilSekolah('${k}')">${k}</td>
-   <td>${m[k].t}</td>
-   <td class="progress-${warna(avg)}">${avg}%</td>
+   <td class="tengah">${m[k].t}</td>
+   <td class="tengah progress-${warna(avg)}">${avg}%</td>
   </tr>`;
  });
 }
 
-/* ===== CHART ===== */
+/* CHART */
 function drawChart(){
  const d=new google.visualization.DataTable();
  d.addColumn('string','Kecamatan');
@@ -195,7 +207,7 @@ function drawChart(){
  .draw(d,{legend:'none',colors:['#2563eb']});
 }
 
-/* ===== SEKOLAH ===== */
+/* TABEL SEKOLAH */
 function tampilSekolah(k){
  filteredData=layerData.filter(r=>r[6]==k);
  currentPage=1;
@@ -212,48 +224,53 @@ function renderTable(){
   const w=warna(p);
   tb.innerHTML+=`
   <tr>
-   <td>${r[0]}</td>
-   <td>${r[1]}</td>
+   <td class="tengah">${r[0]}</td>
+   <td class="tengah">${r[1]}</td>
    <td>${r[2]}</td>
    <td>${r[4]}</td>
-   <td>${r[7]?'✔':''}</td>
-   <td>${r[8]?'✔':''}</td>
-   <td>${r[9]?'✔':''}</td>
-   <td>
+   <td class="tengah">${r[7]?'✔':''}</td>
+   <td class="tengah">${r[8]?'✔':''}</td>
+   <td class="tengah">${r[9]?'✔':''}</td>
+   <td class="align-middle">
     <div class="progress" style="height:12px">
      <div class="progress-bar progress-bar-${w}" style="width:${p}%"></div>
     </div>
    </td>
-   <td class="progress-${w}">${p}%</td>
+   <td class="tengah progress-${w}">${p}%</td>
   </tr>`;
  });
  renderPagination();
 }
 
-/* ===== PAGINATION ===== */
+/* PAGINATION */
 function renderPagination(){
  const p=document.getElementById("pagination");
  p.innerHTML="";
  const t=Math.ceil(filteredData.length/rowsPerPage);
  for(let i=1;i<=t;i++){
   p.innerHTML+=`
-  <li class="page-item ${i==currentPage?'active':''}">
+  <li class="page-item ${i===currentPage?'active':''}">
    <a class="page-link" href="#" onclick="currentPage=${i};renderTable()">${i}</a>
   </li>`;
  }
 }
 
-/* ===== SEARCH ===== */
+/* SEARCH */
 function searchSekolah(){
  const q=document.getElementById("searchInput").value.toLowerCase();
- filteredData=filteredData.filter(r=>r[2].toLowerCase().includes(q)||String(r[1]).includes(q));
+ filteredData=filteredData.filter(r=>
+  r[2].toLowerCase().includes(q) || String(r[1]).includes(q)
+ );
  currentPage=1;
  renderTable();
 }
 
-/* ===== EXPORT ===== */
+/* EXPORT */
 function exportExcel(){
- XLSX.writeFile(XLSX.utils.table_to_book(document.querySelector("table")),'sekolah.xlsx');
+ XLSX.writeFile(
+  XLSX.utils.table_to_book(document.querySelector("table")),
+  'sekolah.xlsx'
+ );
 }
 function exportPDF(){
  html2pdf().from(document.querySelector(".container"))
