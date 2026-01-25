@@ -11,38 +11,26 @@
         :root { --dark-blue: #001f4d; --gold: #ffd700; --soft-bg: #f4f7f6; }
         body { background: var(--soft-bg); font-family: 'Segoe UI', sans-serif; font-size: 14px; }
         
-        /* Header Responsive */
         .header-panel { background: var(--dark-blue); color: white; border-bottom: 4px solid var(--gold); padding: 1rem 0; }
         .text-gold { color: var(--gold) !important; }
 
-        /* Stats Cards */
-        .stat-box { border-radius: 12px; border: none; box-shadow: 0 4px 10px rgba(0,0,0,0.08); background: white; margin-bottom: 10px; }
+        .stat-box { border-radius: 12px; border: none; box-shadow: 0 4px 10px rgba(0,0,0,0.08); background: white; margin-bottom: 10px; height: 100%; }
         .stat-title { font-size: 0.7rem; font-weight: bold; color: #6c757d; text-transform: uppercase; display: block; }
         .stat-value { font-size: 1.1rem; font-weight: bold; margin-bottom: 0; color: #212529; }
         .grand-total-box { background: #e9ecef; border-top: 4px solid #198754 !important; }
 
-        /* Table & Layout */
         .table-res { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
         .badge-sd { background-color: #dc3545; color: white; padding: 4px 8px; border-radius: 4px; font-size: 10px; }
         .badge-smp { background-color: #0d6efd; color: white; padding: 4px 8px; border-radius: 4px; font-size: 10px; }
         
-        /* Mobile Optimizations */
         @media (max-width: 768px) {
-            .header-panel h3 { font-size: 1.2rem; text-align: center; }
-            .header-panel p { font-size: 0.8rem; text-align: center; }
-            .header-panel .d-flex { flex-direction: column; gap: 10px !important; align-items: center !important; }
-            .stat-value { font-size: 1rem; }
-            .btn-sm { width: 100%; } /* Tombol jadi full width di HP */
-            .filter-area { flex-direction: column; align-items: stretch !important; }
+            .header-panel .d-flex { flex-direction: column; gap: 10px !important; }
             .filter-area > * { width: 100% !important; }
-            .hide-mobile { display: none; } /* Sembunyikan kolom kurang penting di HP */
+            .hide-mobile { display: none; }
         }
 
         @media print {
-            @page { size: landscape; margin: 1cm; }
             .btn, .filter-area, .pagination-container, .chart-container { display: none !important; }
-            .header-panel { background: white !important; color: black !important; border-bottom: 2px solid black; }
-            .stat-box { border: 1px solid #ccc !important; box-shadow: none !important; }
             .hide-mobile { display: table-cell !important; }
         }
     </style>
@@ -53,9 +41,9 @@
     <div class="container d-flex justify-content-between align-items-center">
         <div class="text-center text-md-start">
             <h3 class="fw-bold mb-0 text-gold">DASHBOARD BELANJA MODAL BOS</h3>
-            <p class="mb-0 opacity-75">DINAS PENDIDIKAN DAN KEBUDAYAAN - 2025</p>
+            <p class="mb-0 opacity-75 small">DINAS PENDIDIKAN DAN KEBUDAYAAN - 2025</p>
         </div>
-        <div class="d-flex gap-2 w-100 w-md-auto">
+        <div class="d-flex gap-2">
             <button class="btn btn-light btn-sm fw-bold" onclick="exportToExcel()">📊 EXCEL</button>
             <button class="btn btn-danger btn-sm fw-bold" onclick="printToPDF()">🖨️ PDF</button>
             <button class="btn btn-warning btn-sm fw-bold" onclick="fetchData()">🔄 REFRESH</button>
@@ -65,32 +53,59 @@
 
 <div class="container-fluid container-md">
     <div class="row g-2 mb-2">
+        <div class="col-6 col-md-3">
+            <div class="card stat-box p-2 text-center border-top border-4 border-danger">
+                <span class="stat-title text-danger">Sekolah SD</span>
+                <p id="count-sd" class="stat-value text-danger fs-4">0</p>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card stat-box p-2 text-center border-top border-4 border-primary">
+                <span class="stat-title text-primary">Sekolah SMP</span>
+                <p id="count-smp" class="stat-value text-primary fs-4">0</p>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card stat-box p-2 text-center border-top border-4 border-success">
+                <span class="stat-title text-success">Total Sekolah</span>
+                <p id="count-total" class="stat-value text-success fs-4">0</p>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card stat-box p-2 text-center border-top border-4 border-info">
+                <span class="stat-title text-info">Kecamatan</span>
+                <p id="count-kec" class="stat-value text-info fs-4">0</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-2 mb-2">
         <div class="col-md-6">
             <div class="card stat-box border-start border-4 border-danger p-3">
-                <h6 class="fw-bold text-danger border-bottom pb-2 mb-2" style="font-size: 0.8rem;">JENJANG SD</h6>
+                <h6 class="fw-bold text-danger border-bottom pb-2 mb-2 small">CAPAIAN JENJANG SD</h6>
                 <div class="row text-center">
                     <div class="col-6 border-end">
                         <span class="stat-title">Peralatan</span>
-                        <p id="sd-mesin" class="stat-value text-nowrap">Rp 0</p>
+                        <p id="sd-mesin" class="stat-value">Rp 0</p>
                     </div>
                     <div class="col-6">
                         <span class="stat-title">Lainnya</span>
-                        <p id="sd-lain" class="stat-value text-nowrap">Rp 0</p>
+                        <p id="sd-lain" class="stat-value">Rp 0</p>
                     </div>
                 </div>
             </div>
         </div>
         <div class="col-md-6">
             <div class="card stat-box border-start border-4 border-primary p-3">
-                <h6 class="fw-bold text-primary border-bottom pb-2 mb-2" style="font-size: 0.8rem;">JENJANG SMP</h6>
+                <h6 class="fw-bold text-primary border-bottom pb-2 mb-2 small">CAPAIAN JENJANG SMP</h6>
                 <div class="row text-center">
                     <div class="col-6 border-end">
                         <span class="stat-title">Peralatan</span>
-                        <p id="smp-mesin" class="stat-value text-nowrap">Rp 0</p>
+                        <p id="smp-mesin" class="stat-value">Rp 0</p>
                     </div>
                     <div class="col-6">
                         <span class="stat-title">Lainnya</span>
-                        <p id="smp-lain" class="stat-value text-nowrap">Rp 0</p>
+                        <p id="smp-lain" class="stat-value">Rp 0</p>
                     </div>
                 </div>
             </div>
@@ -100,19 +115,19 @@
     <div class="row g-2 mb-3">
         <div class="col-12">
             <div class="card stat-box grand-total-box p-3">
-                <h6 class="fw-bold text-dark border-bottom border-secondary pb-2 mb-3 text-center" style="font-size: 0.8rem;">REKAPITULASI TOTAL (SD + SMP)</h6>
-                <div class="row text-center g-2">
-                    <div class="col-6 col-md-4 border-end-md">
+                <h6 class="fw-bold text-dark border-bottom border-secondary pb-2 mb-3 text-center small">REKAPITULASI TOTAL SELURUH ASET</h6>
+                <div class="row text-center g-2 align-items-center">
+                    <div class="col-6 col-md-4 border-end">
                         <span class="stat-title">Total Peralatan</span>
-                        <p id="total-mesin" class="stat-value text-dark">Rp 0</p>
+                        <p id="total-mesin" class="stat-value">Rp 0</p>
                     </div>
-                    <div class="col-6 col-md-4 border-end-md">
+                    <div class="col-6 col-md-4 border-end">
                         <span class="stat-title">Total Lainnya</span>
-                        <p id="total-lain" class="stat-value text-dark">Rp 0</p>
+                        <p id="total-lain" class="stat-value">Rp 0</p>
                     </div>
                     <div class="col-12 col-md-4">
                         <span class="stat-title text-success">Grand Total</span>
-                        <p id="grand-total" class="stat-value text-success fs-4">Rp 0</p>
+                        <p id="grand-total" class="stat-value text-success fs-3">Rp 0</p>
                     </div>
                 </div>
             </div>
@@ -125,17 +140,17 @@
 
     <div class="table-res">
         <div class="p-3 bg-white border-bottom filter-area d-flex flex-wrap gap-2 align-items-center">
-            <select id="filterJenjang" class="form-select form-select-sm" onchange="currentPage=1; renderUI()">
+            <select id="filterJenjang" class="form-select form-select-sm w-auto" onchange="currentPage=1; renderUI()">
                 <option value="">Semua Jenjang</option>
                 <option value="SD">SD</option>
                 <option value="SMP">SMP</option>
             </select>
-            <select id="filterKecamatan" class="form-select form-select-sm" onchange="currentPage=1; renderUI()"></select>
-            <input type="text" id="searchInput" class="form-control form-control-sm" placeholder="Cari Nama Sekolah..." oninput="currentPage=1; renderUI()">
-            <select id="rowLimit" class="form-select form-select-sm" onchange="currentPage=1; renderUI()">
+            <select id="filterKecamatan" class="form-select form-select-sm w-auto" onchange="currentPage=1; renderUI()"></select>
+            <input type="text" id="searchInput" class="form-control form-control-sm flex-grow-1" placeholder="Cari Nama Sekolah..." oninput="currentPage=1; renderUI()">
+            <select id="rowLimit" class="form-select form-select-sm w-auto" onchange="currentPage=1; renderUI()">
                 <option value="10">10 Baris</option>
                 <option value="50">50 Baris</option>
-                <option value="500">Semua</option>
+                <option value="5000">Semua</option>
             </select>
         </div>
         
@@ -156,12 +171,12 @@
             </table>
         </div>
 
-        <div class="pagination-container d-flex flex-column flex-md-row justify-content-between align-items-center p-3 gap-2 bg-light">
+        <div class="pagination-container d-flex justify-content-between align-items-center p-3 bg-light">
             <div id="pageInfo" class="small fw-bold text-muted"></div>
             <nav>
                 <ul class="pagination pagination-sm mb-0">
-                    <li class="page-item"><button class="page-link" onclick="changePage(-1)">«</button></li>
-                    <li class="page-item"><button class="page-link" onclick="changePage(1)">»</button></li>
+                    <li class="page-item"><button class="page-link" onclick="changePage(-1)">« Prev</button></li>
+                    <li class="page-item"><button class="page-link" onclick="changePage(1)">Next »</button></li>
                 </ul>
             </nav>
         </div>
@@ -188,7 +203,7 @@
                 renderUI();
             }
         } catch (error) {
-            document.getElementById("main-table").innerHTML = '<tr><td colspan="7" class="text-center p-4">Koneksi Gagal.</td></tr>';
+            document.getElementById("main-table").innerHTML = '<tr><td colspan="7" class="text-center p-4">Gagal memuat data dari server.</td></tr>';
         }
     }
 
@@ -200,6 +215,7 @@
         Array.from(kecSet).sort().forEach(kec => {
             select.innerHTML += `<option value="${kec}">${kec}</option>`;
         });
+        document.getElementById("count-kec").innerText = kecSet.size;
     }
 
     function renderUI() {
@@ -210,7 +226,8 @@
         
         let grouped = {};
         let stats = { sd_mesin: 0, sd_lain: 0, smp_mesin: 0, smp_lain: 0 };
-        let rekapKec = {};
+        let schoolSD = new Set(), schoolSMP = new Set();
+        let rekapKecChart = {};
 
         masterData.forEach(row => {
             const kec = (row[1] || "TANPA KECAMATAN").trim().toUpperCase();
@@ -221,42 +238,53 @@
             const unitUpper = unit.toUpperCase();
             const jenjang = (unitUpper.includes("SDN") || unitUpper.includes("SD NEGERI") || unitUpper.includes(" SD ")) ? "SD" : "SMP";
 
-            const isMesin = rekM.toUpperCase().includes("PERALATAN DAN MESIN");
+            // Hitung Stats Global (Berdasarkan Data Asli)
+            const isMesin = rekM.toUpperCase().includes("PERALATAN");
             if (jenjang === "SD") {
+                schoolSD.add(unit);
                 isMesin ? stats.sd_mesin += nilai : stats.sd_lain += nilai;
             } else {
+                schoolSMP.add(unit);
                 isMesin ? stats.smp_mesin += nilai : stats.smp_lain += nilai;
             }
 
+            // Filter Logic untuk Tabel & Chart
             if (selectedKec && kec !== selectedKec) return;
             if (selectedJenjang && jenjang !== selectedJenjang) return;
             if (searchKeyword && !unitUpper.includes(searchKeyword)) return;
 
-            if (!rekapKec[kec]) rekapKec[kec] = { total: 0 };
-            rekapKec[kec].total += nilai;
+            if (!rekapKecChart[kec]) rekapKecChart[kec] = 0;
+            rekapKecChart[kec] += nilai;
 
             const key = `${unit}-${rekM}-${kodeAset}`;
             if (!grouped[key]) grouped[key] = { kec, unit, jenjang, rekM, kodeAset, total: 0 };
             grouped[key].total += nilai;
         });
 
-        // Update Stats
-        const tMesin = stats.sd_mesin + stats.smp_mesin;
-        const tLain = stats.sd_lain + stats.smp_lain;
+        // Update UI Summary
+        document.getElementById("count-sd").innerText = schoolSD.size;
+        document.getElementById("count-smp").innerText = schoolSMP.size;
+        document.getElementById("count-total").innerText = schoolSD.size + schoolSMP.size;
+
         document.getElementById("sd-mesin").innerText = `Rp ${formatIDR(stats.sd_mesin)}`;
         document.getElementById("sd-lain").innerText = `Rp ${formatIDR(stats.sd_lain)}`;
         document.getElementById("smp-mesin").innerText = `Rp ${formatIDR(stats.smp_mesin)}`;
         document.getElementById("smp-lain").innerText = `Rp ${formatIDR(stats.smp_lain)}`;
+        
+        const tMesin = stats.sd_mesin + stats.smp_mesin;
+        const tLain = stats.sd_lain + stats.smp_lain;
         document.getElementById("total-mesin").innerText = `Rp ${formatIDR(tMesin)}`;
         document.getElementById("total-lain").innerText = `Rp ${formatIDR(tLain)}`;
         document.getElementById("grand-total").innerText = `Rp ${formatIDR(tMesin + tLain)}`;
 
+        // Pagination & Table
         filteredData = Object.values(grouped);
         const pageSize = isPrinting ? filteredData.length : rowLimit;
         const displayData = filteredData.slice((currentPage - 1) * pageSize, currentPage * pageSize);
         
         const tableBody = document.getElementById("main-table");
-        tableBody.innerHTML = "";
+        tableBody.innerHTML = displayData.length ? "" : '<tr><td colspan="7" class="text-center p-3">Data tidak ditemukan.</td></tr>';
+        
         displayData.forEach((item, index) => {
             const rowNo = ((currentPage - 1) * pageSize + index + 1);
             tableBody.innerHTML += `
@@ -271,8 +299,9 @@
                 </tr>`;
         });
 
-        document.getElementById("pageInfo").innerText = `Hal ${currentPage} / ${Math.ceil(filteredData.length / pageSize) || 1}`;
-        updateChart(Object.keys(rekapKec), Object.keys(rekapKec).map(k => rekapKec[k].total));
+        const maxPage = Math.ceil(filteredData.length / pageSize) || 1;
+        document.getElementById("pageInfo").innerText = `Halaman ${currentPage} dari ${maxPage}`;
+        updateChart(Object.keys(rekapKecChart), Object.values(rekapKecChart));
     }
 
     function updateChart(labels, values) {
@@ -282,20 +311,21 @@
             type: 'bar',
             data: {
                 labels: labels,
-                datasets: [{ data: values, backgroundColor: '#001f4d', borderRadius: 5 }]
+                datasets: [{ data: values, backgroundColor: '#001f4d', borderRadius: 4 }]
             },
             options: { 
                 responsive: true, 
                 maintainAspectRatio: false, 
                 plugins: { legend: { display: false } },
-                scales: { x: { ticks: { font: { size: 9 } } } }
+                scales: { y: { beginAtZero: true }, x: { ticks: { font: { size: 9 } } } }
             }
         });
     }
 
     function changePage(dir) {
         const pageSize = parseInt(document.getElementById("rowLimit").value);
-        if ((currentPage + dir) > 0 && (currentPage + dir) <= Math.ceil(filteredData.length / pageSize)) {
+        const maxPage = Math.ceil(filteredData.length / pageSize);
+        if ((currentPage + dir) > 0 && (currentPage + dir) <= maxPage) {
             currentPage += dir; renderUI();
         }
     }
@@ -306,7 +336,7 @@
     }
 
     function exportToExcel() {
-        XLSX.writeFile(XLSX.utils.table_to_book(document.getElementById("targetTable")), "Monitoring_Aset_2026.xlsx");
+        XLSX.writeFile(XLSX.utils.table_to_book(document.getElementById("targetTable")), "Monitoring_BOS_2025.xlsx");
     }
 
     window.onload = fetchData;
