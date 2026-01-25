@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Monitoring Aset Donggala 2026</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --dark-blue: #001f4d; --gold: #ffd700; --soft-bg: #f4f7f6; }
+        body { background: var(--soft-bg); font-family: 'Segoe UI', sans-serif; }
+        .header-panel { background: var(--dark-blue); color: white; border-bottom: 4px solid var(--gold); padding: 1.5rem 0; }
+        .stat-box { border-radius: 12px; border: none; box-shadow: 0 4px 10px rgba(0,0,0,0.1); background: white; height: 100%; }
+        .stat-title { font-size: 0.75rem; font-weight: bold; color: #6c757d; text-transform: uppercase; margin-bottom: 8px; display: block; }
+        .stat-value { font-size: 1.2rem; font-weight: bold; margin-bottom: 0; }
+        .grand-total-box { background: #e9ecef; border-top: 4px solid #198754 !important; }
+        .table-res { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 2rem; }
+        .badge-sd { background-color: #dc3545; color: white; }
+        .badge-smp { background-color: #0d6efd; color: white; }
+        .text-gold { color: var(--gold) !important; }
+
+        @media print {
+            @page { size: landscape; margin: 1cm; }
+            .btn, .filter-area, .pagination-container, .chart-container { display: none !important; }
+            .header-panel { background: white !important; color: black !important; border-bottom: 2px solid black; padding: 0; }
+            .stat-box { border: 1px solid #ccc !important; box-shadow: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header-panel mb-4">
+    <div class="container d-flex justify-content-between align-items-center">
+        <div>
+            <h3 class="fw-bold mb-0 text-gold">DASHBOARD MONITORING BELANJA MODAL BOS</h3>
+            <p class="mb-0 opacity-75">SUB KEUANGAN ASET DINAS PENDIDIKAN DAN KEBUDAYAAN - 2026</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-light btn-sm fw-bold" onclick="exportToExcel()">📊 EXCEL</button>
+            <button class="btn btn-danger btn-sm fw-bold" onclick="printToPDF()">🖨️ PDF</button>
+            <button class="btn btn-warning btn-sm fw-bold" onclick="fetchData()">🔄 REFRESH</button>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="row g-3 mb-3">
+        <div class="col-md-6">
+            <div class="card stat-box border-start border-4 border-danger p-3">
+                <h6 class="fw-bold text-danger border-bottom pb-2 mb-3">JENJANG SD (SEKOLAH DASAR)</h6>
+                <div class="row text-center">
+                    <div class="col-6 border-end">
+                        <span class="stat-title">Peralatan & Mesin</span>
+                        <p id="sd-mesin" class="stat-value">Rp 0,00</p>
+                    </div>
+                    <div class="col-6">
+                        <span class="stat-title">Aset Tetap Lainnya</span>
+                        <p id="sd-lain" class="stat-value">Rp 0,00</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card stat-box border-start border-4 border-primary p-3">
+                <h6 class="fw-bold text-primary border-bottom pb-2 mb-3">JENJANG SMP (SEKOLAH MENENGAH PERTAMA)</h6>
+                <div class="row text-center">
+                    <div class="col-6 border-end">
+                        <span class="stat-title">Peralatan & Mesin</span>
+                        <p id="smp-mesin" class="stat-value">Rp 0,00</p>
+                    </div>
+                    <div class="col-6">
+                        <span class="stat-title">Aset Tetap Lainnya</span>
+                        <p id="smp-lain" class="stat-value">Rp 0,00</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card stat-box grand-total-box p-3">
+                <h6 class="fw-bold text-dark border-bottom border-secondary pb-2 mb-3 text-center">REKAPITULASI TOTAL SELURUH JENJANG (SD + SMP)</h6>
+                <div class="row text-center align-items-center">
+                    <div class="col-md-4 border-end">
+                        <span class="stat-title">Total Peralatan & Mesin</span>
+                        <p id="total-mesin" class="stat-value text-dark">Rp 0,00</p>
+                    </div>
+                    <div class="col-md-4 border-end">
+                        <span class="stat-title">Total Aset Tetap Lainnya</span>
+                        <p id="total-lain" class="stat-value text-dark">Rp 0,00</p>
+                    </div>
+                    <div class="col-md-4">
+                        <span class="stat-title text-success">Grand Total (Total Aset)</span>
+                        <p id="grand-total" class="stat-value text-success fs-3">Rp 0,00</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card stat-box p-3 mb-4 chart-container">
+        <h6 class="fw-bold text-muted mb-3">VISUALISASI NILAI ASET PER KECAMATAN</h6>
+        <div style="height: 250px;"><canvas id="assetChart"></canvas></div>
+    </div>
+
+    <div class="table-res">
+        <div class="p-3 bg-white border-bottom d-flex flex-wrap gap-2 justify-content-between align-items-center filter-area">
+            <h5 class="mb-0 fw-bold text-primary">Rincian Belanja Modal BOS Tahap 2</h5>
+            <div class="d-flex gap-2 align-items-center">
+                <select id="filterJenjang" class="form-select form-select-sm" style="width: 120px;" onchange="currentPage=1; renderUI()">
+                    <option value="">Semua Jenjang</option>
+                    <option value="SD">SD</option>
+                    <option value="SMP">SMP</option>
+                </select>
+                <select id="filterKecamatan" class="form-select form-select-sm" style="width: 170px;" onchange="currentPage=1; renderUI()"></select>
+                <input type="text" id="searchInput" class="form-control form-control-sm" style="width: 180px;" placeholder="Cari Sekolah..." oninput="currentPage=1; renderUI()">
+                <select id="rowLimit" class="form-select form-select-sm" style="width: 100px;" onchange="currentPage=1; renderUI()">
+                    <option value="15">15 Baris</option>
+                    <option value="50">50 Baris</option>
+                    <option value="100">100 Baris</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="table-responsive">
+            <table id="targetTable" class="table table-hover align-middle mb-0">
+                <thead class="table-dark text-center">
+                    <tr>
+                        <th style="width: 50px;">No</th>
+                        <th>Kecamatan</th>
+                        <th>Jenjang</th>
+                        <th>Nama Sekolah</th>
+                        <th>Rekening Belanja</th>
+                        <th>Kode Aset</th>
+                        <th class="text-end">Jumlah</th>
+                    </tr>
+                </thead>
+                <tbody id="main-table"></tbody>
+            </table>
+        </div>
+
+        <div class="pagination-container d-flex justify-content-between align-items-center p-3 border-top bg-light">
+            <div id="pageInfo" class="small fw-bold text-muted"></div>
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item"><button class="page-link" onclick="changePage(-1)">« Prev</button></li>
+                    <li class="page-item"><button class="page-link" onclick="changePage(1)">Next »</button></li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+<script>
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyuo6OM5IE5sVzA4BpRAU5fWvsy72oc3pFaE2LcVo2PzEd-d7XaO6tzcfqq01UU0GMP/exec";
+    let masterData = [];
+    let filteredData = []; 
+    let currentPage = 1;
+    let myChart = null;
+    let isPrinting = false;
+
+    const formatIDR = (num) => num.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    async function fetchData() {
+        try {
+            const response = await fetch(`${SCRIPT_URL}?action=readData`);
+            const result = await response.json();
+            if (result.success) {
+                masterData = result.data;
+                populateKecamatanFilter();
+                renderUI();
+            }
+        } catch (error) {
+            document.getElementById("main-table").innerHTML = '<tr><td colspan="7" class="text-center text-danger p-5">Gagal memuat data.</td></tr>';
+        }
+    }
+
+    function populateKecamatanFilter() {
+        const kecSet = new Set();
+        masterData.forEach(row => { if(row[1]) kecSet.add(row[1].trim().toUpperCase()); });
+        const select = document.getElementById("filterKecamatan");
+        select.innerHTML = '<option value="">Semua Kecamatan</option>';
+        Array.from(kecSet).sort().forEach(kec => {
+            select.innerHTML += `<option value="${kec}">${kec}</option>`;
+        });
+    }
+
+    function renderUI() {
+        const selectedKec = document.getElementById("filterKecamatan").value;
+        const selectedJenjang = document.getElementById("filterJenjang").value;
+        const searchKeyword = document.getElementById("searchInput").value.toUpperCase();
+        const rowLimitSelect = document.getElementById("rowLimit").value;
+        
+        let grouped = {};
+        let stats = { sd_mesin: 0, sd_lain: 0, smp_mesin: 0, smp_lain: 0 };
+        let rekapKec = {};
+
+        masterData.forEach(row => {
+            const kec = (row[1] || "TANPA KECAMATAN").trim().toUpperCase();
+            const unit = (row[2] || "Tanpa Nama").trim();
+            const rekM = (row[12] || "-").toString().trim(); 
+            const kodeAset = (row[13] || "-").toString().trim(); 
+            const nilai = Number(row[18]) || 0; 
+
+            const unitUpper = unit.toUpperCase();
+            const jenjang = (unitUpper.includes("SDN") || unitUpper.includes("SD NEGERI") || unitUpper.includes(" SD ")) ? "SD" : "SMP";
+
+            // Hitung Stats (Selalu hitung semua data dasar sebelum filter tampilan)
+            const isMesin = rekM.toUpperCase().includes("PERALATAN DAN MESIN");
+            if (jenjang === "SD") {
+                isMesin ? stats.sd_mesin += nilai : stats.sd_lain += nilai;
+            } else {
+                isMesin ? stats.smp_mesin += nilai : stats.smp_lain += nilai;
+            }
+
+            // Filter pencarian dan dropdown
+            if (selectedKec && kec !== selectedKec) return;
+            if (selectedJenjang && jenjang !== selectedJenjang) return;
+            if (searchKeyword && !unitUpper.includes(searchKeyword)) return;
+
+            if (!rekapKec[kec]) rekapKec[kec] = { total: 0 };
+            rekapKec[kec].total += nilai;
+
+            const key = `${unit}-${rekM}-${kodeAset}`;
+            if (!grouped[key]) grouped[key] = { kec, unit, jenjang, rekM, kodeAset, total: 0 };
+            grouped[key].total += nilai;
+        });
+
+        // Update Elemen Statistik
+        const totalSemuaMesin = stats.sd_mesin + stats.smp_mesin;
+        const totalSemuaLain = stats.sd_lain + stats.smp_lain;
+        
+        document.getElementById("sd-mesin").innerText = `Rp ${formatIDR(stats.sd_mesin)}`;
+        document.getElementById("sd-lain").innerText = `Rp ${formatIDR(stats.sd_lain)}`;
+        document.getElementById("smp-mesin").innerText = `Rp ${formatIDR(stats.smp_mesin)}`;
+        document.getElementById("smp-lain").innerText = `Rp ${formatIDR(stats.smp_lain)}`;
+        
+        document.getElementById("total-mesin").innerText = `Rp ${formatIDR(totalSemuaMesin)}`;
+        document.getElementById("total-lain").innerText = `Rp ${formatIDR(totalSemuaLain)}`;
+        document.getElementById("grand-total").innerText = `Rp ${formatIDR(totalSemuaMesin + totalSemuaLain)}`;
+
+        filteredData = Object.values(grouped);
+        const pageSize = isPrinting ? filteredData.length : parseInt(rowLimitSelect);
+        const displayData = isPrinting ? filteredData : filteredData.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+        
+        const tableBody = document.getElementById("main-table");
+        tableBody.innerHTML = "";
+
+        displayData.forEach((item, index) => {
+            const rowNo = isPrinting ? (index + 1) : ((currentPage - 1) * pageSize + index + 1);
+            tableBody.innerHTML += `
+                <tr>
+                    <td class="text-center">${rowNo}</td>
+                    <td><small>${item.kec}</small></td>
+                    <td class="text-center"><span class="badge ${item.jenjang==='SD'?'badge-sd':'badge-smp'}">${item.jenjang}</span></td>
+                    <td class="text-start"><strong>${item.unit}</strong></td>
+                    <td class="text-start"><small>${item.rekM}</small></td>
+                    <td class="text-center"><code>${item.kodeAset}</code></td>
+                    <td class="text-end fw-bold text-primary">Rp ${formatIDR(item.total)}</td>
+                </tr>`;
+        });
+
+        const totalPages = Math.ceil(filteredData.length / pageSize);
+        document.getElementById("pageInfo").innerText = `Halaman ${currentPage} dari ${totalPages || 1} (${filteredData.length} Total Data)`;
+        updateChart(Object.keys(rekapKec).sort(), Object.keys(rekapKec).sort().map(k => rekapKec[k].total));
+    }
+
+    function printToPDF() {
+        isPrinting = true; renderUI(); 
+        setTimeout(() => { window.print(); isPrinting = false; renderUI(); }, 500);
+    }
+
+    function updateChart(labels, values) {
+        const ctx = document.getElementById('assetChart').getContext('2d');
+        if (myChart) myChart.destroy();
+        myChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{ data: values, backgroundColor: '#001f4d', borderRadius: 5 }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+    }
+
+    function changePage(dir) {
+        const pageSize = parseInt(document.getElementById("rowLimit").value);
+        if ((currentPage + dir) > 0 && (currentPage + dir) <= Math.ceil(filteredData.length / pageSize)) {
+            currentPage += dir; renderUI();
+        }
+    }
+
+    function exportToExcel() {
+        isPrinting = true; renderUI();
+        setTimeout(() => {
+            XLSX.writeFile(XLSX.utils.table_to_book(document.getElementById("targetTable")), "Monitoring_Aset_2026.xlsx");
+            isPrinting = false; renderUI();
+        }, 100);
+    }
+    window.onload = fetchData;
+</script>
+</body>
+</html>
