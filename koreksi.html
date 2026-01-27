@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard Data Koreksi Aset</title>
+
+<!-- DataTables CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #121212;
+  color: #fff;
+  padding: 20px;
+}
+
+h2 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+select {
+  padding: 6px;
+  margin-bottom: 10px;
+  background: #1e1e1e;
+  color: white;
+  border: 1px solid #555;
+}
+
+table.dataTable {
+  background: #1e1e1e;
+  color: white;
+}
+
+table.dataTable thead {
+  background: #2c3e50;
+  color: white;
+}
+
+.dataTables_wrapper .dataTables_filter input,
+.dataTables_wrapper .dataTables_length select {
+  background: #1e1e1e;
+  color: white;
+  border: 1px solid #555;
+}
+
+.dt-button {
+  background: #2c3e50 !important;
+  color: white !important;
+  border: none !important;
+}
+</style>
+</head>
+<body>
+
+<h2>Dashboard Data Koreksi Aset</h2>
+
+<label>Filter Kecamatan: </label>
+<select id="filterKecamatan">
+  <option value="">Semua Kecamatan</option>
+</select>
+
+<table id="tabelData" class="display" style="width:100%">
+  <thead>
+    <tr>
+      <th>No</th>
+      <th>Kecamatan</th>
+      <th>Nama Sekolah</th>
+      <th>Kodefikasi Aset</th>
+      <th>Jumlah Total</th>
+      <th>Keterangan</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<!-- jQuery -->
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+
+<!-- DataTables -->
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+<!-- Buttons -->
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
+
+<script>
+const sheetURL = "https://docs.google.com/spreadsheets/d/1tXecSFIhRW7B2GkHG688h906klr7eUA6IwPV7nd7EMs/gviz/tq?sheet=Data%20Koreksi";
+
+function formatRupiah(angka) {
+  if (!angka) return "Rp0";
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0
+  }).format(angka);
+}
+
+fetch(sheetURL)
+  .then(res => res.text())
+  .then(text => {
+    const json = JSON.parse(text.substring(47).slice(0, -2));
+    const rows = json.table.rows;
+
+    let dataSet = [];
+    let kecamatanSet = new Set();
+
+    rows.forEach(row => {
+      let no = row.c[0]?.v || "";
+      let kecamatan = row.c[1]?.v || "";
+      let sekolah = row.c[2]?.v || "";
+      let kode = row.c[3]?.v || "";
+      let jumlah = row.c[4]?.v || 0;
+      let ket = row.c[5]?.v || "";
+
+      kecamatanSet.add(kecamatan);
+
+      dataSet.push([
+        no,
+        kecamatan,
+        sekolah,
+        kode,
+        formatRupiah(jumlah),
+        ket
+      ]);
+    });
+
+    // isi dropdown kecamatan
+    kecamatanSet.forEach(kec => {
+      document.getElementById("filterKecamatan")
+        .insertAdjacentHTML("beforeend", `<option value="${kec}">${kec}</option>`);
+    });
+
+    let table = $('#tabelData').DataTable({
+      data: dataSet,
+      dom: 'Bfltip',
+      buttons: ['excelHtml5', 'pdfHtml5', 'print'],
+      language: {
+        search: "Cari:",
+        lengthMenu: "Tampilkan _MENU_ data",
+        info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
+        zeroRecords: "Data tidak ditemukan",
+        paginate: { next: "Next", previous: "Prev" }
+      }
+    });
+
+    // filter kecamatan
+    $('#filterKecamatan').on('change', function () {
+      table.column(1).search(this.value).draw();
+    });
+
+  });
+</script>
+
+</body>
+</html>
