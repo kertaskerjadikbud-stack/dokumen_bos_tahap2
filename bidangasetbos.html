@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Monitoring Aset BOS - Kabupaten Donggala</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
+        .navy-header { background-color: #001f3f !important; color: white !important; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .sticky-header thead { position: sticky; top: 0; z-index: 50; }
+        .sticky-header thead tr:first-child th { position: sticky; top: 0; z-index: 51; background-color: #001f3f !important; }
+        .sticky-header thead tr:last-child th { position: sticky; top: 38px; z-index: 50; }
+        th { box-shadow: inset 0 -1px 0 #334155, inset -1px 0 0 #334155; }
+        .tab-active { border-bottom: 3px solid #001f3f; color: #001f3f; font-weight: bold; }
+        .clickable-row:hover { cursor: pointer; background-color: #f0f9ff; }
+        .progress-bar { height: 8px; border-radius: 4px; background-color: #e2e8f0; overflow: hidden; }
+        .progress-fill { height: 100%; transition: width 0.5s ease; }
+    </style>
+</head>
+<body class="p-4 md:p-6">
+
+<div class="max-w-[98%] mx-auto">
+    <div class="mb-6 text-center">
+        <h1 class="text-2xl font-bold text-slate-800 uppercase tracking-tight">📊 Monitoring Penginputan Dana BOS Tahap II Tahun 2025</h1>
+        <p class="text-slate-500 font-medium italic underline">BIDANG ASET DAERAH - BPKAD KABUPATEN DONGGALA</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-blue-900">
+            <p class="text-xs font-bold text-slate-500 uppercase">Total Peralatan & Mesin</p>
+            <h3 id="totalPeralatan" class="text-lg font-bold text-blue-900 mt-1">Rp 0</h3>
+        </div>
+        <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-blue-700">
+            <p class="text-xs font-bold text-slate-500 uppercase">Total Aset Tetap Lainnya</p>
+            <h3 id="totalAsetLain" class="text-lg font-bold text-blue-800 mt-1">Rp 0</h3>
+        </div>
+        <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-emerald-600">
+            <p class="text-xs font-bold text-slate-500 uppercase">Grand Total Keseluruhan</p>
+            <h3 id="grandTotal" class="text-lg font-bold text-emerald-700 mt-1">Rp 0</h3>
+        </div>
+        <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-red-600">
+            <p class="text-xs font-bold text-slate-500 uppercase">Total Selisih (Unbalanced)</p>
+            <h3 id="totalSelisih" class="text-lg font-bold text-red-700 mt-1">Rp 0</h3>
+        </div>
+    </div>
+
+    <div class="flex gap-6 mb-4 border-b border-slate-200 text-sm overflow-x-auto">
+        <button onclick="switchTab('detail')" id="tab-detail" class="tab-active py-2 px-1 whitespace-nowrap">Detail Sekolah</button>
+        <button onclick="switchTab('kecamatan')" id="tab-kecamatan" class="py-2 px-1 text-slate-500 whitespace-nowrap">Rekap & Progres Kecamatan</button>
+        <button onclick="switchTab('visual')" id="tab-visual" class="py-2 px-1 text-slate-500 whitespace-nowrap">Visualisasi Grafik</button>
+        <button onclick="switchTab('pisah')" id="tab-pisah" class="py-2 px-1 text-slate-500 whitespace-nowrap">Pemisahan Jenis Aset</button>
+    </div>
+
+    <div class="bg-white p-4 rounded-xl shadow-sm mb-6 flex flex-wrap gap-4 items-center justify-between">
+        <div class="flex flex-wrap gap-3 flex-1 min-w-[300px]">
+            <input type="text" id="searchInput" 
+                class="flex-1 px-4 py-2 rounded-lg border border-slate-200 outline-none focus:ring-2 focus:ring-blue-900 text-sm" 
+                placeholder="Cari sekolah atau ketik kecamatan..." onkeyup="currentPage=1; updateActiveView()">
+            <button id="resetFilter" onclick="resetAllFilters()" class="hidden bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold transition-all">
+                ✕ Reset
+            </button>
+        </div>
+        <div class="flex items-center gap-2">
+            <select id="pageSize" onchange="resetPage()" class="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-slate-50">
+                <option value="25">25 Baris</option>
+                <option value="50">50 Baris</option>
+                <option value="500">Semua Data</option>
+            </select>
+            <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-md">
+                <span>📊 Excel</span>
+            </button>
+            <button onclick="exportToPDF()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-md">
+                <span>📄 PDF</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
+        <div id="loader" class="p-20 text-center">
+            <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-900 mx-auto mb-4"></div>
+            <p class="text-slate-500 text-sm italic">Memproses Data Aset...</p>
+        </div>
+
+        <div id="content" style="display:none;">
+            <div id="view-detail" class="view-section">
+                <div class="overflow-x-auto overflow-y-auto max-h-[500px] custom-scrollbar sticky-header">
+                    <table class="w-full text-[10px] border-separate border-spacing-0" id="mainTable">
+                        <thead>
+                            <tr class="navy-header text-center uppercase">
+                                <th colspan="2" class="px-2 py-3 border-b border-r border-slate-700">Identitas</th>
+                                <th colspan="3" class="px-2 py-3 border-b border-r border-slate-700">Hasil Rekon Dinas</th>
+                                <th colspan="3" class="px-2 py-3 border-b border-r border-slate-700">Penginputan Sekolah</th>
+                                <th class="px-2 py-3 border-b border-r border-slate-700 bg-red-900">SELISIH</th>
+                                <th colspan="3" class="px-2 py-3 border-b border-slate-700 bg-emerald-800">E-BMD</th>
+                            </tr>
+                            <tr class="bg-slate-200 text-slate-800 font-bold uppercase text-center">
+                                <th class="px-2 py-2 border-b border-r border-slate-300">Kecamatan</th>
+                                <th class="px-2 py-2 border-b border-r border-slate-300">Sekolah</th>
+                                <th class="px-2 py-2 border-b border-r border-slate-300">Peralatan</th>
+                                <th class="px-2 py-2 border-b border-r border-slate-300">Aset Lain</th>
+                                <th class="px-2 py-2 border-b border-r border-slate-300 bg-blue-100 font-bold">Total</th>
+                                <th class="px-2 py-2 border-b border-r border-slate-300">Peralatan</th>
+                                <th class="px-2 py-2 border-b border-r border-slate-300">Aset Lain</th>
+                                <th class="px-2 py-2 border-b border-r border-slate-300 bg-indigo-100 font-bold">Total</th>
+                                <th class="px-2 py-2 border-b border-r border-slate-300 text-red-700">Value</th>
+                                <th class="px-2 py-2 border-b border-r border-slate-300">Peralatan</th>
+                                <th class="px-2 py-2 border-b border-r border-slate-300">Aset Lain</th>
+                                <th class="px-2 py-2 border-b border-slate-300 bg-emerald-100 font-bold">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBodyDetail" class="divide-y divide-slate-100 italic"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="view-kecamatan" class="view-section hidden p-4">
+                <table class="w-full text-xs border-collapse border border-slate-200" id="kecamatanTable">
+                    <thead>
+                        <tr class="navy-header text-center uppercase">
+                            <th class="p-3 border">Kecamatan</th>
+                            <th class="p-3 border">Total Anggaran</th>
+                            <th class="p-3 border">Progres Input (Balance)</th>
+                            <th class="p-3 border">Detail Anggaran</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBodyKecamatan" class="font-bold"></tbody>
+                </table>
+            </div>
+
+            <div id="view-visual" class="view-section hidden p-6">
+                <div class="h-[400px] w-full bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <canvas id="kecamatanChart"></canvas>
+                </div>
+            </div>
+
+            <div id="view-pisah" class="view-section hidden p-4 flex flex-col gap-6">
+                <div>
+                    <h4 class="font-bold text-blue-900 mb-2 border-b-2 border-blue-900 pb-1 uppercase">Tabel Peralatan & Mesin</h4>
+                    <table class="w-full text-[10px] border-collapse" id="peralatanTable">
+                        <tr class="bg-blue-900 text-white"><th class="p-2 border">Nama Sekolah</th><th class="p-2 border text-right">Rekon</th><th class="p-2 border text-right">Input</th><th class="p-2 border text-right">E-BMD</th></tr>
+                        <tbody id="tableBodyPeralatan"></tbody>
+                    </table>
+                </div>
+                <div>
+                    <h4 class="font-bold text-emerald-900 mb-2 border-b-2 border-emerald-900 pb-1 uppercase">Tabel Aset Tetap Lainnya</h4>
+                    <table class="w-full text-[10px] border-collapse" id="asetLainTable">
+                        <tr class="bg-emerald-900 text-white"><th class="p-2 border">Nama Sekolah</th><th class="p-2 border text-right">Rekon</th><th class="p-2 border text-right">Input</th><th class="p-2 border text-right">E-BMD</th></tr>
+                        <tbody id="tableBodyAsetLain"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="p-4 flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-50 border-t border-slate-100">
+                <div id="paginationInfo" class="text-xs text-slate-500 font-medium italic"></div>
+                <div id="paginationControls" class="flex items-center gap-1"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwk0ZV-Qc3scfY5eRMLE4dBRde3Jwu6iTZ41R2yL07qcAft8_qQMdNja1ALSp6oSnb8/exec";
+    let fullData = [];
+    let activeTab = 'detail';
+    let currentPage = 1;
+    let pageSize = 25;
+    let chartInstance = null;
+
+    function formatRupiah(val) {
+        const num = parseFloat(val);
+        if (isNaN(num) || num === 0) return "Rp 0";
+        return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
+    }
+
+    async function loadData() {
+        try {
+            const response = await fetch(SCRIPT_URL);
+            const data = await response.json();
+            fullData = data.slice(4).filter(row => row[1] && row[1].toString().trim() !== "");
+            updateActiveView();
+            document.getElementById('loader').classList.add('hidden');
+            document.getElementById('content').style.display = 'block';
+        } catch (e) { console.error(e); }
+    }
+
+    function updateActiveView() {
+        const query = document.getElementById('searchInput').value.toLowerCase();
+        const filtered = fullData.filter(row => (row[0] + ' ' + row[1]).toLowerCase().includes(query));
+
+        let sumPeralatan = 0, sumAsetLain = 0, sumGrand = 0, sumSelisih = 0;
+        filtered.forEach(row => {
+            sumPeralatan += parseFloat(row[2]) || 0;
+            sumAsetLain += parseFloat(row[3]) || 0;
+            sumGrand += parseFloat(row[4]) || 0;
+            sumSelisih += parseFloat(row[8]) || 0;
+        });
+
+        document.getElementById('totalPeralatan').innerText = formatRupiah(sumPeralatan);
+        document.getElementById('totalAsetLain').innerText = formatRupiah(sumAsetLain);
+        document.getElementById('grandTotal').innerText = formatRupiah(sumGrand);
+        document.getElementById('totalSelisih').innerText = formatRupiah(sumSelisih);
+        document.getElementById('resetFilter').classList.toggle('hidden', query === "");
+
+        if (activeTab === 'detail') renderDetail(filtered);
+        else if (activeTab === 'kecamatan') renderKecamatan(fullData);
+        else if (activeTab === 'visual') renderChart(fullData);
+        else if (activeTab === 'pisah') renderPisah(filtered);
+    }
+
+    function switchTab(tab) {
+        activeTab = tab;
+        document.querySelectorAll('.view-section').forEach(s => s.classList.add('hidden'));
+        document.querySelectorAll('[id^="tab-"]').forEach(t => t.classList.remove('tab-active'));
+        document.getElementById(`view-${tab}`).classList.remove('hidden');
+        document.getElementById(`tab-${tab}`).classList.add('tab-active');
+        updateActiveView();
+    }
+
+    function renderDetail(data) {
+        const start = (currentPage - 1) * pageSize;
+        const paginated = data.slice(start, start + pageSize);
+        const tbody = document.getElementById('tableBodyDetail');
+        tbody.innerHTML = "";
+
+        paginated.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-blue-50 bg-white";
+            row.slice(0, 12).forEach((val, i) => {
+                const td = document.createElement('td');
+                td.className = "px-2 py-2 border-b border-r border-slate-100 whitespace-nowrap";
+                if (i >= 2) {
+                    td.innerText = formatRupiah(val);
+                    td.classList.add("text-right", "font-mono");
+                    if (i === 8 && Math.abs(parseFloat(val)) > 0.9) td.classList.add("text-red-700", "font-bold", "bg-red-50");
+                } else {
+                    td.innerText = val || "-";
+                    if (i === 1) td.classList.add("font-bold", "text-slate-800");
+                }
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        });
+        renderPagination(data.length);
+    }
+
+    function renderKecamatan(data) {
+        const rekap = {};
+        data.forEach(row => {
+            const kec = row[0] || "LAINNYA";
+            if (!rekap[kec]) rekap[kec] = { p: 0, a: 0, t: 0, totalSekolah: 0, tuntas: 0 };
+            rekap[kec].p += parseFloat(row[2]) || 0;
+            rekap[kec].a += parseFloat(row[3]) || 0;
+            rekap[kec].t += parseFloat(row[4]) || 0;
+            rekap[kec].totalSekolah++;
+            if (Math.abs(parseFloat(row[8]) || 0) < 1) rekap[kec].tuntas++;
+        });
+
+        const tbody = document.getElementById('tableBodyKecamatan');
+        tbody.innerHTML = "";
+        Object.keys(rekap).sort().forEach(key => {
+            const r = rekap[key];
+            const persen = Math.round((r.tuntas / r.totalSekolah) * 100);
+            const tr = document.createElement('tr');
+            tr.className = "clickable-row bg-white";
+            tr.innerHTML = `
+                <td class="p-3 border text-blue-800 underline uppercase" onclick="filterByKecamatan('${key}')">${key}</td>
+                <td class="p-3 border text-right">${formatRupiah(r.t)}</td>
+                <td class="p-3 border">
+                    <div class="flex items-center gap-2">
+                        <div class="progress-bar flex-1">
+                            <div class="progress-fill ${persen === 100 ? 'bg-emerald-500' : 'bg-blue-600'}" style="width: ${persen}%"></div>
+                        </div>
+                        <span class="text-[10px] w-8">${persen}%</span>
+                    </div>
+                    <p class="text-[9px] text-slate-400 mt-1">${r.tuntas}/${r.totalSekolah} Sekolah Balance</p>
+                </td>
+                <td class="p-3 border text-[10px] font-normal italic text-slate-500">
+                    Peralatan: ${formatRupiah(r.p)}<br>Aset Lain: ${formatRupiah(r.a)}
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function renderChart(data) {
+        const rekap = {};
+        data.forEach(row => {
+            const kec = row[0] || "Lainnya";
+            if (!rekap[kec]) rekap[kec] = 0;
+            rekap[kec] += parseFloat(row[4]) || 0;
+        });
+
+        const sortedKec = Object.entries(rekap).sort((a, b) => b[1] - a[1]);
+        const labels = sortedKec.map(item => item[0]);
+        const values = sortedKec.map(item => item[1]);
+
+        if (chartInstance) chartInstance.destroy();
+        const ctx = document.getElementById('kecamatanChart').getContext('2d');
+        chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Total Aset (Rp)',
+                    data: values,
+                    backgroundColor: '#001f3f',
+                    borderRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+    }
+
+    function renderPisah(data) {
+        const bodyP = document.getElementById('tableBodyPeralatan');
+        const bodyA = document.getElementById('tableBodyAsetLain');
+        bodyP.innerHTML = ""; bodyA.innerHTML = "";
+        data.forEach(row => {
+            bodyP.innerHTML += `<tr class="border-b bg-white hover:bg-slate-50"><td class="p-2 border font-bold">${row[1]}</td><td class="p-2 border text-right">${formatRupiah(row[2])}</td><td class="p-2 border text-right font-bold text-blue-700">${formatRupiah(row[5])}</td><td class="p-2 border text-right">${formatRupiah(row[9])}</td></tr>`;
+            bodyA.innerHTML += `<tr class="border-b bg-white hover:bg-slate-50"><td class="p-2 border font-bold">${row[1]}</td><td class="p-2 border text-right">${formatRupiah(row[3])}</td><td class="p-2 border text-right font-bold text-emerald-700">${formatRupiah(row[6])}</td><td class="p-2 border text-right">${formatRupiah(row[10])}</td></tr>`;
+        });
+    }
+
+    function filterByKecamatan(kec) {
+        document.getElementById('searchInput').value = kec;
+        switchTab('detail');
+        currentPage = 1;
+        updateActiveView();
+    }
+
+    function resetAllFilters() {
+        document.getElementById('searchInput').value = "";
+        currentPage = 1;
+        updateActiveView();
+    }
+
+    function renderPagination(totalCount) {
+        const pages = Math.ceil(totalCount / pageSize);
+        const ctrl = document.getElementById('paginationControls');
+        ctrl.innerHTML = "";
+        if (pages <= 1) return;
+        for (let i = 1; i <= pages; i++) {
+            if (i === 1 || i === pages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+                const btn = document.createElement('button');
+                btn.innerText = i;
+                btn.onclick = () => { currentPage = i; updateActiveView(); };
+                btn.className = `px-3 py-1 rounded text-[10px] font-bold ${i === currentPage ? 'bg-blue-900 text-white shadow-md' : 'bg-white border hover:bg-slate-100'}`;
+                ctrl.appendChild(btn);
+            }
+        }
+        document.getElementById('paginationInfo').innerText = `Ditemukan: ${totalCount} Data`;
+    }
+
+    function resetPage() { pageSize = parseInt(document.getElementById('pageSize').value); currentPage = 1; updateActiveView(); }
+
+    // --- FUNGSI EXPORT UPDATE DENGAN RINGKASAN & STATUS ---
+
+    function exportToExcel() {
+        const query = document.getElementById('searchInput').value.toLowerCase();
+        const filtered = fullData.filter(row => (row[0] + ' ' + row[1]).toLowerCase().includes(query));
+        
+        const totalPeralatan = document.getElementById('totalPeralatan').innerText;
+        const totalAsetLain = document.getElementById('totalAsetLain').innerText;
+        const grandTotal = document.getElementById('grandTotal').innerText;
+        const totalSelisih = document.getElementById('totalSelisih').innerText;
+
+        const worksheetData = [
+            ["LAPORAN MONITORING ASET BELANJA MODAL BOS - KABUPATEN DONGGALA"],
+            ["Tanggal Cetak:", new Date().toLocaleString('id-ID')],
+            ["Filter Pencarian:", query || "Semua Data"],
+            [""],
+            ["RINGKASAN TOTAL (FILTER AKTIF)"],
+            ["Total Peralatan & Mesin", totalPeralatan],
+            ["Total Aset Tetap Lainnya", totalAsetLain],
+            ["Grand Total Keseluruhan", grandTotal],
+            ["Total Selisih (Unbalanced)", totalSelisih],
+            [""],
+            ["KECAMATAN", "SEKOLAH", "REKON PERALATAN", "REKON ASET LAIN", "TOTAL REKON", "INPUT PERALATAN", "INPUT ASET LAIN", "TOTAL INPUT", "SELISIH", "EBMD PERALATAN", "EBMD ASET LAIN", "TOTAL EBMD", "STATUS"]
+        ];
+
+        filtered.forEach(row => {
+            const dataRow = row.slice(0, 12);
+            const selisihVal = Math.abs(parseFloat(row[8]) || 0);
+            dataRow.push(selisihVal < 1 ? "BALANCE" : "UNBALANCED");
+            worksheetData.push(dataRow);
+        });
+        
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(worksheetData);
+        ws['!cols'] = [{wch:15}, {wch:35}, {wch:15}, {wch:15}, {wch:15}, {wch:15}, {wch:15}, {wch:15}, {wch:15}, {wch:15}, {wch:15}, {wch:15}, {wch:15}];
+        XLSX.utils.book_append_sheet(wb, ws, "DataAset");
+        XLSX.writeFile(wb, "Laporan_Belanja_Modal_Aset_BOS.xlsx");
+    }
+
+    function exportToPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('l', 'mm', 'a4');
+        
+        const totalPeralatan = document.getElementById('totalPeralatan').innerText;
+        const totalAsetLain = document.getElementById('totalAsetLain').innerText;
+        const grandTotal = document.getElementById('grandTotal').innerText;
+        const totalSelisih = document.getElementById('totalSelisih').innerText;
+
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.text("LAPORAN MONITORING ASET (BELANJA MODAL BOS TAHAP II 2025)", 14, 15);
+        
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.text("BPKAD KABUPATEN DONGGALA - BIDANG ASET - DIKBUD", 14, 21);
+        doc.line(14, 23, 283, 23);
+
+        // Bagian Ringkasan
+        doc.setFontSize(9);
+        doc.text(`Total Peralatan: ${totalPeralatan}`, 14, 30);
+        doc.text(`Total Aset Lain: ${totalAsetLain}`, 14, 35);
+        doc.text(`Grand Total: ${grandTotal}`, 100, 30);
+        
+        doc.setTextColor(180, 0, 0); // Merah untuk selisih
+        doc.setFont("helvetica", "bold");
+        doc.text(`Total Selisih: ${totalSelisih}`, 100, 35);
+        
+        doc.setTextColor(0, 0, 0);
+        doc.setFont("helvetica", "italic");
+        doc.setFontSize(7);
+        doc.text(`*Dicetak pada: ${new Date().toLocaleString('id-ID')}`, 14, 41);
+
+        const query = document.getElementById('searchInput').value.toLowerCase();
+        const filtered = fullData.filter(row => (row[0] + ' ' + row[1]).toLowerCase().includes(query));
+        
+        const headers = [["KECAMATAN", "NAMA SEKOLAH", "TOTAL REKON", "TOTAL INPUT", "SELISIH", "TOTAL E-BMD", "STATUS"]];
+        const body = filtered.map(row => {
+            const sVal = Math.abs(parseFloat(row[8]) || 0);
+            return [
+                row[0], row[1], 
+                formatRupiah(row[4]), formatRupiah(row[7]), 
+                formatRupiah(row[8]), formatRupiah(row[11]),
+                sVal < 1 ? "BALANCE" : "SELISIH"
+            ];
+        });
+
+        doc.autoTable({
+            head: headers,
+            body: body,
+            startY: 45,
+            styles: { fontSize: 7, cellPadding: 2 },
+            headStyles: { fillColor: [0, 31, 63] },
+            columnStyles: { 2: {halign:'right'}, 3: {halign:'right'}, 4: {halign:'right'}, 5: {halign:'right'}, 6: {halign:'center'} },
+            didParseCell: function(data) {
+                if (data.column.index === 6) {
+                    if (data.cell.text[0] === 'SELISIH') data.cell.styles.textColor = [200, 0, 0];
+                    if (data.cell.text[0] === 'BALANCE') data.cell.styles.textColor = [0, 128, 0];
+                }
+            }
+        });
+
+        doc.save(`Laporan_Belanja_Modal_Aset_BOS.pdf`);
+    }
+
+    loadData();
+</script>
+</body>
+</html>
