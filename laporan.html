@@ -20,8 +20,6 @@ body { font-family:'Inter',sans-serif; background:#f1f5f9; }
 #mainTable thead th { font-size:10px; padding:6px 4px; border:1px solid #1e293b; }
 #mainTable tbody td { font-size:11px; padding:5px 4px; border:1px solid #e2e8f0; }
 .loading-overlay { position:fixed; inset:0; background:rgba(255,255,255,.85); display:flex; justify-content:center; align-items:center; z-index:9999; }
-
-/* ==== UKURAN DIAGRAM ==== */
 .chart-box{ height:160px; }
 .chart-box canvas{ max-height:160px !important; }
 </style>
@@ -44,7 +42,6 @@ body { font-family:'Inter',sans-serif; background:#f1f5f9; }
 <p class="italic underline text-xs">KABUPATEN DONGGALA</p>
 </div>
 
-<!-- ===== CHART ===== -->
 <div class="grid md:grid-cols-2 gap-4 mb-6">
 <div class="bg-white p-4 rounded shadow chart-box">
 <h3 class="text-xs font-bold text-center mb-2">Progres Penginputan</h3>
@@ -56,7 +53,6 @@ body { font-family:'Inter',sans-serif; background:#f1f5f9; }
 </div>
 </div>
 
-<!-- ===== STAT ===== -->
 <div class="grid md:grid-cols-5 gap-4 mb-6">
 <div class="bg-white p-3 border-l-4 border-blue-600">
 <p class="text-xs">Total Peralatan & Mesin</p>
@@ -80,7 +76,6 @@ body { font-family:'Inter',sans-serif; background:#f1f5f9; }
 </div>
 </div>
 
-<!-- ===== FILTER ===== -->
 <div class="bg-white p-4 rounded shadow mb-4 flex gap-3">
 <input id="searchInput" onkeyup="updateTable()" class="flex-1 border px-3 py-2 rounded" placeholder="Cari sekolah / kecamatan">
 <select id="filterStatus" onchange="updateTable()" class="border px-3 py-2 rounded">
@@ -93,7 +88,6 @@ body { font-family:'Inter',sans-serif; background:#f1f5f9; }
 <button onclick="exportPDF()" class="bg-red-600 text-white px-4 py-2 rounded">PDF</button>
 </div>
 
-<!-- ===== TABEL ===== -->
 <div class="bg-white rounded shadow overflow-auto sticky-header">
 <table class="w-full" id="mainTable">
 <thead>
@@ -107,9 +101,9 @@ body { font-family:'Inter',sans-serif; background:#f1f5f9; }
 <th rowspan="2" class="bg-red-900">SELISIH</th>
 </tr>
 <tr class="bg-slate-200 text-center">
-<th>Peralatan dan Mesin</th><th>Aset Tetap Lain	</th><th>Total</th>
-<th>Peralatan dan Mesin</th><th>Aset Tetap Lain	</th><th>Total</th>
-<th>Peralatan dan Mesin</th><th>Aset Tetap Lain	</th><th>Total</th>
+<th>Peralatan</th><th>Aset Lain</th><th>Total</th>
+<th>Peralatan</th><th>Aset Lain</th><th>Total</th>
+<th>Peralatan</th><th>Aset Lain</th><th>Total</th>
 </tr>
 </thead>
 <tbody id="tableBody"></tbody>
@@ -124,7 +118,6 @@ let masterData=[], chartInput, chartValid;
 
 const rupiah=v=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',minimumFractionDigits:0}).format(v||0);
 
-/* ===== EBMD IKUT REKON ===== */
 function syncEBMD(r){
 const pR=+r[2]||0,lR=+r[3]||0,t=+r[10]||0;
 let p=0,l=0;
@@ -136,28 +129,20 @@ else {p=+r[8]||0; l=+r[9]||0;}
 return {p,l,t};
 }
 
-/* ===== CHART ===== */
-function initCharts(){
-chartInput=new Chart(chartInputEl={
-},{
-});
-}
-
 function initCharts(){
 chartInput=new Chart(document.getElementById('chartInput'),{
 type:'doughnut',
 data:{labels:['Sudah','Belum'],datasets:[{data:[0,0],backgroundColor:['#10b981','#ef4444']}]},
-options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:9},boxWidth:10}}}}
+options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}
 });
 
 chartValid=new Chart(document.getElementById('chartValid'),{
 type:'pie',
 data:{labels:['Balance','Selisih'],datasets:[{data:[0,0],backgroundColor:['#3b82f6','#f97316']}]},
-options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:9},boxWidth:10}}}}
+options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}
 });
 }
 
-/* ===== LOAD ===== */
 async function loadData(){
 const res=await fetch(SCRIPT_URL);
 const data=await res.json();
@@ -167,7 +152,6 @@ initCharts();
 updateTable();
 }
 
-/* ===== TABLE ===== */
 function updateTable(){
 const q=searchInput.value.toLowerCase();
 const f=filterStatus.value;
@@ -175,7 +159,7 @@ tableBody.innerHTML="";
 
 let no=1,sP=0,sL=0,sG=0,sSel=0,cDone=0,cBal=0;
 
-masterData.filter(r=>{
+const filteredData = masterData.filter(r=>{
 const txt=(r[0]+" "+r[1]).toLowerCase().includes(q);
 const sek=+r[7]||0;
 const sel=Math.abs((+r[4]||0)-sek);
@@ -184,13 +168,16 @@ if(f==="selisih") return sel>1;
 if(f==="sudah_input") return sek>0;
 if(f==="belum_input") return sek<=0;
 return true;
-}).forEach(r=>{
+});
+
+filteredData.forEach(r=>{
 const totalRekon=+r[4]||0,totalSek=+r[7]||0;
 const selisih=totalRekon-totalSek;
 const e=syncEBMD(r);
 
 sP+=+r[2]||0; sL+=+r[3]||0; sG+=totalRekon; sSel+=selisih;
-if(totalSek>0)cDone++; if(Math.abs(selisih)<1)cBal++;
+if(totalSek>0)cDone++; 
+if(Math.abs(selisih)<1)cBal++;
 
 const tr=document.createElement('tr');
 [
@@ -213,11 +200,12 @@ statAsetLain.textContent=rupiah(sL);
 statGrandTotal.textContent=rupiah(sG);
 statTotalSelisih.textContent=rupiah(sSel);
 countDone.textContent=cDone;
-countPending.textContent=masterData.length-cDone;
+countPending.textContent=filteredData.length-cDone;
 
-chartInput.data.datasets[0].data=[cDone,masterData.length-cDone];
-chartValid.data.datasets[0].data=[cBal,masterData.length-cBal];
-chartInput.update(); chartValid.update();
+chartInput.data.datasets[0].data=[cDone,filteredData.length-cDone];
+chartValid.data.datasets[0].data=[cBal,filteredData.length-cBal];
+chartInput.update(); 
+chartValid.update();
 }
 
 /* ===== EXPORT ===== */
@@ -335,8 +323,6 @@ async function exportPDF() {
 
         doc.save(`Laporan_BOS_Donggala_${now.getTime()}.pdf`);
     }
-
-
 window.onload=loadData;
 </script>
 
