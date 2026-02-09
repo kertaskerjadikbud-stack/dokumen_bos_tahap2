@@ -17,7 +17,7 @@ thead th{background:#001f3f;color:#fff}
 <body class="p-4 bg-slate-100">
 
 <h1 class="text-center font-bold text-xl mb-4">
-📊 MONITORING BELANJA MODAL BOS 2025
+📊 RINCIAN BELANJA MODAL BOS 2025
 </h1>
 
 <div class="flex gap-2 mb-3">
@@ -44,8 +44,8 @@ thead th{background:#001f3f;color:#fff}
   <th>No</th>
   <th>Kecamatan</th>
   <th>Sekolah</th>
-  <th>Peralatan</th>
-  <th>Aset Lain</th>
+  <th>Peralatan Dan Mesin</th>
+  <th>Aset Tetap Lain</th>
   <th>Total Rekon</th>
   <th>Total E-BMD</th>
   <th>Selisih</th>
@@ -205,8 +205,8 @@ function exportPDFDetailOfficial(){
   const sekolahName = modalTitle.textContent.replace("Detail Aset - ","");
 
   // Tambahkan logo (misal link publik)
-  const logoKabupaten = "https://i.imgur.com/0XzNQ3q.png"; // ganti dengan logo asli
-  const logoDinas = "https://i.imgur.com/I2K3s1x.png"; // ganti dengan logo asli
+  const logoKabupaten = "https://upload.wikimedia.org/wikipedia/commons/e/e5/Lambang_Kabupaten_Donggala_%282015-sekarang%29.png"; // ganti dengan logo asli
+  const logoDinas = "https://www.freepnglogos.com/uploads/tut-wuri-handayani-png-logo/vector-wuri-handayani-warna-0.png"; // ganti dengan logo asli
 
   doc.addImage(logoKabupaten,'PNG',12,8,20,20);
   doc.addImage(logoDinas,'PNG',257,8,20,20);
@@ -214,7 +214,7 @@ function exportPDFDetailOfficial(){
   doc.setFontSize(16); doc.text("PEMERINTAH KABUPATEN DONGGALA",148,12,{align:'center'});
   doc.setFontSize(14); doc.text("DINAS PENDIDIKAN DAN KEBUDAYAAN",148,20,{align:'center'});
   doc.setLineWidth(0.8); doc.line(10,25,287,25);
-  doc.setFontSize(12); doc.text("LAPORAN RINCIAN ASET SEKOLAH",148,32,{align:'center'});
+  doc.setFontSize(12); doc.text("RINCIAN BELANJA MODAL ASET SEKOLAH",148,32,{align:'center'});
   doc.text(sekolahName,148,38,{align:'center'});
 
   let startY=45; const pageSizePDF=15;
