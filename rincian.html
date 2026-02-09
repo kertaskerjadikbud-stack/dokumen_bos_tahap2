@@ -57,7 +57,7 @@ thead th{background:#001f3f;color:#fff}
 
 <!-- PAGINATION UTAMA -->
 <div class="flex justify-between items-center mt-2">
-  <select id="pageSize" onchange="changePageSize()" class="border px-2 py-1 rounded text-xs">
+  <select id="pageSizeSelect" onchange="changePageSize()" class="border px-2 py-1 rounded text-xs">
     <option value="10">10</option>
     <option value="25">25</option>
     <option value="50">50</option>
@@ -146,13 +146,12 @@ function updateTable(){
     if(Math.abs(sel)>1) tr.classList.add("bg-red-50");
 
     [
-      no++,r[0],r[1],
-      rupiah(r[2]),rupiah(r[3]),
-      rupiah(r[4]),rupiah(r[5]),rupiah(sel)
+      no++, r[0], r[1],
+      rupiah(r[2]), rupiah(r[3]),
+      rupiah(r[4]), rupiah(r[5]), rupiah(sel)
     ].forEach((v,i)=>{
       const td=document.createElement("td");
       td.textContent=v;
-
       if(i===2){
         td.onclick=()=>showDetail(r[1]);
         td.classList.add("text-blue-600","underline","cursor-pointer");
@@ -162,6 +161,7 @@ function updateTable(){
       }
       tr.appendChild(td);
     });
+
     tableBody.appendChild(tr);
   });
 
@@ -169,7 +169,7 @@ function updateTable(){
 }
 
 function nextPage(){currentPage++;updateTable();}
-function prevPage(){if(currentPage>1)currentPage--;updateTable();}
+function prevPage(){if(currentPage>1) currentPage--;updateTable();}
 function changePageSize(){
   pageSize=Number(pageSizeSelect.value||pageSize);
   currentPage=1;
@@ -197,7 +197,12 @@ function renderDetailPage(){
     const tr=document.createElement("tr");
     r.forEach((v,i)=>{
       const td=document.createElement("td");
-      td.textContent=i>=3?rupiah(v):v;
+      // format hanya Jumlah (2), Harga (3), Total (4)
+      if(i === 2 || i === 3 || i === 4){
+        td.textContent = rupiah(v);
+      } else {
+        td.textContent = v;
+      }
       tr.appendChild(td);
     });
     detailBody.appendChild(tr);
