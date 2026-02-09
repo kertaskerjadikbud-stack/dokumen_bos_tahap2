@@ -36,6 +36,7 @@ thead th{background:#001f3f;color:#fff}
   </button>
 </div>
 
+<!-- TABEL UTAMA -->
 <div class="bg-white rounded shadow overflow-auto">
 <table id="mainTable" class="w-full">
 <thead>
@@ -54,6 +55,21 @@ thead th{background:#001f3f;color:#fff}
 </table>
 </div>
 
+<!-- PAGINATION UTAMA -->
+<div class="flex justify-between items-center mt-2">
+  <select id="pageSize" onchange="changePageSize()" class="border px-2 py-1 rounded text-xs">
+    <option value="10">10</option>
+    <option value="25">25</option>
+    <option value="50">50</option>
+  </select>
+
+  <div class="flex gap-1 items-center">
+    <button onclick="prevPage()" class="px-2 border rounded">◀</button>
+    <span id="pageInfo" class="text-xs"></span>
+    <button onclick="nextPage()" class="px-2 border rounded">▶</button>
+  </div>
+</div>
+
 <!-- MODAL DETAIL -->
 <div id="modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center">
   <div class="bg-white w-11/12 md:w-3/4 rounded p-4">
@@ -61,21 +77,41 @@ thead th{background:#001f3f;color:#fff}
       <h2 id="modalTitle" class="font-bold"></h2>
       <button onclick="closeModal()">✖</button>
     </div>
+
     <table class="w-full text-xs">
       <thead class="bg-slate-200">
         <tr>
-          <th>Judul</th><th>Kode</th><th>Jumlah</th>
-          <th>Harga</th><th>Total</th><th>Asal</th><th>Keterangan</th>
+          <th>Judul</th>
+          <th>Kode Aset</th>
+          <th>Jumlah</th>
+          <th>Harga</th>
+          <th>Total</th>
+          <th>Asal</th>
+          <th>Keterangan</th>
         </tr>
       </thead>
       <tbody id="detailBody"></tbody>
     </table>
+
+    <!-- PAGINATION DETAIL -->
+    <div class="flex justify-end gap-2 mt-2">
+      <button onclick="prevDetailPage()" class="px-2 border rounded text-xs">◀</button>
+      <span id="detailPageInfo" class="text-xs"></span>
+      <button onclick="nextDetailPage()" class="px-2 border rounded text-xs">▶</button>
+    </div>
   </div>
 </div>
 
 <script>
 const SCRIPT_URL="https://script.google.com/macros/s/AKfycbxbJ4Y1V30BynuGIHbEeelEB7hN1xqrNtvKMcXIewzeBd_ZLTw5s-c6qDJhd3-keRJm/exec";
+
 let masterData=[];
+let currentPage=1;
+let pageSize=10;
+
+let detailData=[];
+let detailPage=1;
+const detailPageSize=10;
 
 const rupiah=v=>new Intl.NumberFormat('id-ID',{
   style:'currency',currency:'IDR',minimumFractionDigits:0
@@ -85,19 +121,28 @@ async function loadData(){
   const jenjang=document.getElementById('filterJenjang').value;
   const res=await fetch(`${SCRIPT_URL}?jenjang=${jenjang}`);
   masterData=await res.json();
+  currentPage=1;
   updateTable();
 }
 
 function updateTable(){
   const q=searchInput.value.toLowerCase();
   tableBody.innerHTML="";
-  let no=1;
 
-  masterData.filter(r=>{
-    return (r[0]+" "+r[1]).toLowerCase().includes(q);
-  }).forEach(r=>{
+  const filtered=masterData.filter(r=>
+    (r[0]+" "+r[1]).toLowerCase().includes(q)
+  );
+
+  const totalPages=Math.ceil(filtered.length/pageSize)||1;
+  if(currentPage>totalPages) currentPage=totalPages;
+
+  const start=(currentPage-1)*pageSize;
+  const pageData=filtered.slice(start,start+pageSize);
+  let no=start+1;
+
+  pageData.forEach(r=>{
     const sel=r[4]-r[5];
-    const tr=document.createElement('tr');
+    const tr=document.createElement("tr");
     if(Math.abs(sel)>1) tr.classList.add("bg-red-50");
 
     [
@@ -105,18 +150,30 @@ function updateTable(){
       rupiah(r[2]),rupiah(r[3]),
       rupiah(r[4]),rupiah(r[5]),rupiah(sel)
     ].forEach((v,i)=>{
-      const td=document.createElement('td');
+      const td=document.createElement("td");
       td.textContent=v;
+
       if(i===2){
         td.onclick=()=>showDetail(r[1]);
         td.classList.add("text-blue-600","underline","cursor-pointer");
       }
-      if(i===7) td.classList.add(sel!==0?"text-red-600":"text-emerald-600","font-bold");
+      if(i===7){
+        td.classList.add(sel!==0?"text-red-600":"text-emerald-600","font-bold");
+      }
       tr.appendChild(td);
     });
-
     tableBody.appendChild(tr);
   });
+
+  pageInfo.textContent=`Halaman ${currentPage} / ${totalPages}`;
+}
+
+function nextPage(){currentPage++;updateTable();}
+function prevPage(){if(currentPage>1)currentPage--;updateTable();}
+function changePageSize(){
+  pageSize=Number(pageSizeSelect.value||pageSize);
+  currentPage=1;
+  updateTable();
 }
 
 async function showDetail(sekolah){
@@ -125,19 +182,32 @@ async function showDetail(sekolah){
   modalTitle.textContent="Detail Aset - "+sekolah;
 
   const res=await fetch(`${SCRIPT_URL}?mode=detail&sekolah=${encodeURIComponent(sekolah)}`);
-  const data=await res.json();
-  detailBody.innerHTML="";
+  detailData=await res.json();
+  detailPage=1;
+  renderDetailPage();
+}
 
-  data.forEach(r=>{
-    const tr=document.createElement('tr');
+function renderDetailPage(){
+  detailBody.innerHTML="";
+  const totalPages=Math.ceil(detailData.length/detailPageSize)||1;
+  const start=(detailPage-1)*detailPageSize;
+  const pageData=detailData.slice(start,start+detailPageSize);
+
+  pageData.forEach(r=>{
+    const tr=document.createElement("tr");
     r.forEach((v,i)=>{
-      const td=document.createElement('td');
+      const td=document.createElement("td");
       td.textContent=i>=3?rupiah(v):v;
       tr.appendChild(td);
     });
     detailBody.appendChild(tr);
   });
+
+  detailPageInfo.textContent=`Halaman ${detailPage} / ${totalPages}`;
 }
+
+function nextDetailPage(){detailPage++;renderDetailPage();}
+function prevDetailPage(){if(detailPage>1)detailPage--;renderDetailPage();}
 
 function closeModal(){
   modal.classList.add("hidden");
