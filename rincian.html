@@ -2,30 +2,28 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Monitoring Aset BOS</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 
 <style>
-body{background:#f1f5f9}
 th,td{border:1px solid #e5e7eb;padding:4px;font-size:11px}
-thead th{background:#001f3f;color:white;font-size:10px}
+thead th{background:#001f3f;color:#fff}
 </style>
 </head>
 
-<body class="p-4">
+<body class="p-4 bg-slate-100">
 
 <h1 class="text-center font-bold text-xl mb-4">
 📊 MONITORING BELANJA MODAL BOS 2025
 </h1>
 
-<div class="flex gap-3 mb-4">
+<div class="flex gap-2 mb-3">
   <input id="searchInput" onkeyup="updateTable()"
     class="border px-3 py-2 flex-1 rounded"
-    placeholder="Cari Kecamatan / Sekolah">
+    placeholder="Cari sekolah / kecamatan">
 
   <select id="filterJenjang" onchange="loadData()" class="border px-3 py-2 rounded">
     <option value="ALL">Semua Jenjang</option>
@@ -33,33 +31,50 @@ thead th{background:#001f3f;color:white;font-size:10px}
     <option value="SMP">SMP</option>
   </select>
 
-  <button onclick="exportExcel()" class="bg-emerald-600 text-white px-4 rounded">
-    Excel
+  <button onclick="exportPDF()" class="bg-red-600 text-white px-4 rounded">
+    PDF
   </button>
 </div>
 
-<div class="bg-white overflow-auto rounded shadow">
+<div class="bg-white rounded shadow overflow-auto">
 <table id="mainTable" class="w-full">
 <thead>
 <tr>
-<th rowspan="2">No</th>
-<th rowspan="2">Kecamatan</th>
-<th rowspan="2">Sekolah</th>
-<th colspan="3">Rekap BOS</th>
-<th rowspan="2">Selisih</th>
-</tr>
-<tr>
-<th>Peralatan</th>
-<th>Aset Lain</th>
-<th>Total</th>
+  <th>No</th>
+  <th>Kecamatan</th>
+  <th>Sekolah</th>
+  <th>Peralatan</th>
+  <th>Aset Lain</th>
+  <th>Total Rekon</th>
+  <th>Total E-BMD</th>
+  <th>Selisih</th>
 </tr>
 </thead>
 <tbody id="tableBody"></tbody>
 </table>
 </div>
 
+<!-- MODAL DETAIL -->
+<div id="modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center">
+  <div class="bg-white w-11/12 md:w-3/4 rounded p-4">
+    <div class="flex justify-between mb-2">
+      <h2 id="modalTitle" class="font-bold"></h2>
+      <button onclick="closeModal()">✖</button>
+    </div>
+    <table class="w-full text-xs">
+      <thead class="bg-slate-200">
+        <tr>
+          <th>Judul</th><th>Kode</th><th>Jumlah</th>
+          <th>Harga</th><th>Total</th><th>Asal</th><th>Keterangan</th>
+        </tr>
+      </thead>
+      <tbody id="detailBody"></tbody>
+    </table>
+  </div>
+</div>
+
 <script>
-const SCRIPT_URL="https://script.google.com/macros/s/AKfycbxL6KO3pwqmHlxrsWfXa_IQ-h154Kv6DTJZAKYcAEirp8G5TBYnzxehz8kk0v4XzgIe/exec";
+const SCRIPT_URL="https://script.google.com/macros/s/AKfycbwjVKY0Av_rViPQk8F_-m26ySEGkGkWjqolmaGo-6flq3VaImbpZqBIU2Eg3G5rY_7R/exec";
 let masterData=[];
 
 const rupiah=v=>new Intl.NumberFormat('id-ID',{
@@ -69,41 +84,84 @@ const rupiah=v=>new Intl.NumberFormat('id-ID',{
 async function loadData(){
   const jenjang=document.getElementById('filterJenjang').value;
   const res=await fetch(`${SCRIPT_URL}?jenjang=${jenjang}`);
-  const json=await res.json();
-  masterData=json.slice(4);
+  masterData=await res.json();
   updateTable();
 }
 
 function updateTable(){
-  const q=document.getElementById('searchInput').value.toLowerCase();
-  const body=document.getElementById('tableBody');
-  body.innerHTML="";
+  const q=searchInput.value.toLowerCase();
+  tableBody.innerHTML="";
   let no=1;
 
   masterData.filter(r=>{
     return (r[0]+" "+r[1]).toLowerCase().includes(q);
   }).forEach(r=>{
+    const sel=r[4]-r[5];
     const tr=document.createElement('tr');
-    const sel=r[4]-r[10];
+    if(Math.abs(sel)>1) tr.classList.add("bg-red-50");
 
     [
       no++,r[0],r[1],
-      rupiah(r[2]),rupiah(r[3]),rupiah(r[4]),
-      rupiah(sel)
+      rupiah(r[2]),rupiah(r[3]),
+      rupiah(r[4]),rupiah(r[5]),rupiah(sel)
     ].forEach((v,i)=>{
       const td=document.createElement('td');
       td.textContent=v;
-      if(i===6) td.className=sel!==0?'text-red-600 font-bold':'text-emerald-600';
+      if(i===2){
+        td.onclick=()=>showDetail(r[1]);
+        td.classList.add("text-blue-600","underline","cursor-pointer");
+      }
+      if(i===7) td.classList.add(sel!==0?"text-red-600":"text-emerald-600","font-bold");
       tr.appendChild(td);
     });
 
-    body.appendChild(tr);
+    tableBody.appendChild(tr);
   });
 }
 
-function exportExcel(){
-  const wb=XLSX.utils.table_to_book(mainTable,{sheet:"Monitoring BOS"});
-  XLSX.writeFile(wb,"Monitoring_BOS_2025.xlsx");
+async function showDetail(sekolah){
+  modal.classList.remove("hidden");
+  modal.classList.add("flex");
+  modalTitle.textContent="Detail Aset - "+sekolah;
+
+  const res=await fetch(`${SCRIPT_URL}?mode=detail&sekolah=${encodeURIComponent(sekolah)}`);
+  const data=await res.json();
+  detailBody.innerHTML="";
+
+  data.forEach(r=>{
+    const tr=document.createElement('tr');
+    r.forEach((v,i)=>{
+      const td=document.createElement('td');
+      td.textContent=i>=3?rupiah(v):v;
+      tr.appendChild(td);
+    });
+    detailBody.appendChild(tr);
+  });
+}
+
+function closeModal(){
+  modal.classList.add("hidden");
+}
+
+function exportPDF(){
+  const { jsPDF } = window.jspdf;
+  const doc=new jsPDF('l','mm','a4');
+
+  doc.setFontSize(14);
+  doc.text("PEMERINTAH KABUPATEN DONGGALA",148,12,{align:'center'});
+  doc.text("DINAS PENDIDIKAN DAN KEBUDAYAAN",148,18,{align:'center'});
+  doc.line(10,22,287,22);
+
+  doc.setFontSize(11);
+  doc.text("LAPORAN MONITORING ASET BOS 2025",148,30,{align:'center'});
+
+  doc.autoTable({
+    html:'#mainTable',
+    startY:35,
+    styles:{fontSize:7}
+  });
+
+  doc.save("Monitoring_Aset_BOS_2025.pdf");
 }
 
 window.onload=loadData;
