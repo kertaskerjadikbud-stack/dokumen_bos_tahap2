@@ -299,17 +299,20 @@ async function exportPDF() {
         const colWidth = (pageWidth - 30) / 3;
         doc.setFontSize(8);
         doc.setFont("helvetica", "bold");
-        doc.text("Pengelola Dana BOS,", 15 + (colWidth / 2), finalY, { align: "center" });
+        doc.text("Pengelola Dana BOS SMP,", 15 + (colWidth / 2), finalY, { align: "center" });
+        doc.text("Pengelola Dana BOS SD,", 15 + (colWidth / 2), finalY, { align: "center" });
         doc.text("Pengurus Barang Disdikbud,", 15 + colWidth + (colWidth / 2), finalY, { align: "center" });
         doc.text("Tim Verifikasi Aset,", 15 + (colWidth * 2) + (colWidth / 2), finalY, { align: "center" });
 
         // Tempat tanda tangan (Kosong)
         doc.setFont("helvetica", "normal");
+        doc.text("( IZRA )", 15 + (colWidth / 2), finalY + 22, { align: "center" });
         doc.text("( TAUHID )", 15 + (colWidth / 2), finalY + 22, { align: "center" });
         doc.text("( MA'RUF )", 15 + colWidth + (colWidth / 2), finalY + 22, { align: "center" });
         doc.text("( MUHAMMAD KAUTSAR HASAN, S.M. )", 15 + (colWidth * 2) + (colWidth / 2), finalY + 22, { align: "center" });
 
         // Baris NIP
+        doc.text("NIP. 198506262009031002", 15 + (colWidth / 2), finalY + 27, { align: "center" });
         doc.text("NIP. 198506262009031003", 15 + (colWidth / 2), finalY + 27, { align: "center" });
         doc.text("NIP. 198306262014091001", 15 + colWidth + (colWidth / 2), finalY + 27, { align: "center" });
         doc.text("NIP. 199306122025211151", 15 + (colWidth * 2) + (colWidth / 2), finalY + 27, { align: "center" });
