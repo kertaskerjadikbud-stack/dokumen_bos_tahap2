@@ -1,332 +1,111 @@
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Monitoring Aset BOS & E-BMD - Kabupaten Donggala</title>
+<title>Monitoring Aset BOS</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-
 <style>
-body { font-family:'Inter',sans-serif; background:#f1f5f9; }
-.navy-header { background:#001f3f; color:#fff; }
-.sticky-header thead { position:sticky; top:0; z-index:50; }
-#mainTable thead th { font-size:10px; padding:6px 4px; border:1px solid #1e293b; }
-#mainTable tbody td { font-size:11px; padding:5px 4px; border:1px solid #e2e8f0; }
-.loading-overlay { position:fixed; inset:0; background:rgba(255,255,255,.85); display:flex; justify-content:center; align-items:center; z-index:9999; }
-.chart-box{ height:160px; }
-.chart-box canvas{ max-height:160px !important; }
+body{background:#f1f5f9}
+th,td{border:1px solid #e5e7eb;padding:4px;font-size:11px}
+thead th{background:#001f3f;color:white;font-size:10px}
 </style>
 </head>
 
 <body class="p-4">
 
-<div id="loader" class="loading-overlay">
-<div class="text-center">
-<div class="animate-spin h-12 w-12 border-t-4 border-blue-600 rounded-full mb-2"></div>
-<p class="font-bold">Memuat Data...</p>
-</div>
+<h1 class="text-center font-bold text-xl mb-4">
+📊 MONITORING BELANJA MODAL BOS 2025
+</h1>
+
+<div class="flex gap-3 mb-4">
+  <input id="searchInput" onkeyup="updateTable()"
+    class="border px-3 py-2 flex-1 rounded"
+    placeholder="Cari Kecamatan / Sekolah">
+
+  <select id="filterJenjang" onchange="loadData()" class="border px-3 py-2 rounded">
+    <option value="ALL">Semua Jenjang</option>
+    <option value="SD">SD</option>
+    <option value="SMP">SMP</option>
+  </select>
+
+  <button onclick="exportExcel()" class="bg-emerald-600 text-white px-4 rounded">
+    Excel
+  </button>
 </div>
 
-<div class="max-w-[99%] mx-auto">
-
-<div class="text-center mb-6">
-<h1 class="text-2xl font-bold uppercase">📊 Monitoring Belanja Modal BOS 2025</h1>
-<p class="italic underline">DINAS PENDIDIKAN DAN KEBUDAYAAN</p>
-<p class="italic underline text-xs">KABUPATEN DONGGALA</p>
-</div>
-
-<div class="grid md:grid-cols-2 gap-4 mb-6">
-<div class="bg-white p-4 rounded shadow chart-box">
-<h3 class="text-xs font-bold text-center mb-2">Progres Penginputan Belanja Modal BOS Tahun 2025</h3>
-<canvas id="chartInput"></canvas>
-</div>
-<div class="bg-white p-4 rounded shadow chart-box">
-<h3 class="text-xs font-bold text-center mb-2">Status Validitas Data</h3>
-<canvas id="chartValid"></canvas>
-</div>
-</div>
-
-<div class="grid md:grid-cols-5 gap-4 mb-6">
-<div class="bg-white p-3 border-l-4 border-blue-600">
-<p class="text-xs">Total Peralatan & Mesin</p>
-<b id="statPeralatan">Rp 0</b>
-</div>
-<div class="bg-white p-3 border-l-4 border-teal-600">
-<p class="text-xs">Total Aset Tetap Lain</p>
-<b id="statAsetLain">Rp 0</b>
-</div>
-<div class="bg-white p-3 border-l-4 border-slate-800">
-<p class="text-xs">Jumlah Total Rekon</p>
-<b id="statGrandTotal">Rp 0</b>
-</div>
-<div class="bg-white p-3 border-l-4 border-red-600">
-<p class="text-xs text-red-600">Total Selisih</p>
-<b id="statTotalSelisih" class="text-red-600">Rp 0</b>
-</div>
-<div class="bg-white p-3 border-l-4 border-emerald-600">
-<p class="text-xs">Info Sekolah</p>
-<b>Input: <span id="countDone">0</span> | Sisa: <span id="countPending">0</span></b>
-</div>
-</div>
-
-<div class="bg-white p-4 rounded shadow mb-4 flex gap-3">
-<input id="searchInput" onkeyup="updateTable()" class="flex-1 border px-3 py-2 rounded" placeholder="Cari sekolah / kecamatan">
-<select id="filterStatus" onchange="updateTable()" class="border px-3 py-2 rounded">
-<option value="all">Semua Data</option>
-<option value="selisih">Data Selisih</option>
-<option value="sudah_input">Sudah Input</option>
-<option value="belum_input">Belum Input</option>
-</select>
-<button onclick="exportExcel()" class="bg-emerald-600 text-white px-4 py-2 rounded">Excel</button>
-<button onclick="exportPDF()" class="bg-red-600 text-white px-4 py-2 rounded">PDF</button>
-</div>
-
-<div class="bg-white rounded shadow overflow-auto sticky-header">
-<table class="w-full" id="mainTable">
+<div class="bg-white overflow-auto rounded shadow">
+<table id="mainTable" class="w-full">
 <thead>
-<tr class="navy-header text-center">
+<tr>
 <th rowspan="2">No</th>
 <th rowspan="2">Kecamatan</th>
 <th rowspan="2">Sekolah</th>
-<th colspan="3">1. Kertas Kerja Rekon Dinas</th>
-<th colspan="3">2. Input Kertas Kerja Sekolah</th>
-<th colspan="3">3.Input Belanja Modal Ke E-BMD</th>
-<th rowspan="2" class="bg-red-900">SELISIH</th>
+<th colspan="3">Rekap BOS</th>
+<th rowspan="2">Selisih</th>
 </tr>
-<tr class="bg-slate-200 text-center">
-<th>Peralatan & Mesin</th><th>Aset Tetap Lain</th><th>Jumlah Total</th>
-<th>Peralatan & Mesin</th><th>Aset Tetap Lain</th><th>Jumlah Total</th>
-<th>Peralatan & Mesin</th><th>Aset Tetap Lain</th><th>Jumlah Total</th>
+<tr>
+<th>Peralatan</th>
+<th>Aset Lain</th>
+<th>Total</th>
 </tr>
 </thead>
 <tbody id="tableBody"></tbody>
 </table>
 </div>
 
-</div>
-
 <script>
-const SCRIPT_URL="https://script.google.com/macros/s/AKfycbyH3WBvxf2ipO0QsbSV4-5ey9z8hKOnOWHdj2vfT3uI791jhUs-cEGhKuwkX1016_y8/exec";
-let masterData=[], chartInput, chartValid;
+const SCRIPT_URL="https://script.google.com/macros/s/AKfycbxL6KO3pwqmHlxrsWfXa_IQ-h154Kv6DTJZAKYcAEirp8G5TBYnzxehz8kk0v4XzgIe/exec";
+let masterData=[];
 
-const rupiah=v=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',minimumFractionDigits:0}).format(v||0);
-
-function syncEBMD(r){
-const pR=+r[2]||0,lR=+r[3]||0,t=+r[10]||0;
-let p=0,l=0;
-if(t>0){
-if(pR>0 && lR===0) p=t;
-else if(lR>0 && pR===0) l=t;
-else {p=+r[8]||0; l=+r[9]||0;}
-}
-return {p,l,t};
-}
-
-function initCharts(){
-chartInput=new Chart(document.getElementById('chartInput'),{
-type:'doughnut',
-data:{labels:['Sudah','Belum'],datasets:[{data:[0,0],backgroundColor:['#10b981','#ef4444']}]},
-options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}
-});
-
-chartValid=new Chart(document.getElementById('chartValid'),{
-type:'pie',
-data:{labels:['Balance','Selisih'],datasets:[{data:[0,0],backgroundColor:['#3b82f6','#f97316']}]},
-options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}
-});
-}
+const rupiah=v=>new Intl.NumberFormat('id-ID',{
+  style:'currency',currency:'IDR',minimumFractionDigits:0
+}).format(v||0);
 
 async function loadData(){
-const res=await fetch(SCRIPT_URL);
-const data=await res.json();
-masterData=data.slice(4).filter(r=>r[1]);
-loader.style.display='none';
-initCharts();
-updateTable();
+  const jenjang=document.getElementById('filterJenjang').value;
+  const res=await fetch(`${SCRIPT_URL}?jenjang=${jenjang}`);
+  const json=await res.json();
+  masterData=json.slice(4);
+  updateTable();
 }
 
 function updateTable(){
-const q=searchInput.value.toLowerCase();
-const f=filterStatus.value;
-tableBody.innerHTML="";
+  const q=document.getElementById('searchInput').value.toLowerCase();
+  const body=document.getElementById('tableBody');
+  body.innerHTML="";
+  let no=1;
 
-let no=1,sP=0,sL=0,sG=0,sSel=0,cDone=0,cBal=0;
+  masterData.filter(r=>{
+    return (r[0]+" "+r[1]).toLowerCase().includes(q);
+  }).forEach(r=>{
+    const tr=document.createElement('tr');
+    const sel=r[4]-r[10];
 
-const filteredData = masterData.filter(r=>{
-const txt=(r[0]+" "+r[1]).toLowerCase().includes(q);
-const sek=+r[7]||0;
-const sel=Math.abs((+r[4]||0)-sek);
-if(!txt) return false;
-if(f==="selisih") return sel>1;
-if(f==="sudah_input") return sek>0;
-if(f==="belum_input") return sek<=0;
-return true;
-});
+    [
+      no++,r[0],r[1],
+      rupiah(r[2]),rupiah(r[3]),rupiah(r[4]),
+      rupiah(sel)
+    ].forEach((v,i)=>{
+      const td=document.createElement('td');
+      td.textContent=v;
+      if(i===6) td.className=sel!==0?'text-red-600 font-bold':'text-emerald-600';
+      tr.appendChild(td);
+    });
 
-filteredData.forEach(r=>{
-const totalRekon=+r[4]||0,totalSek=+r[7]||0;
-const selisih=totalRekon-totalSek;
-const e=syncEBMD(r);
-
-sP+=+r[2]||0; sL+=+r[3]||0; sG+=totalRekon; sSel+=selisih;
-if(totalSek>0)cDone++; 
-if(Math.abs(selisih)<1)cBal++;
-
-const tr=document.createElement('tr');
-[
-no++,r[0],r[1],
-r[2],r[3],totalRekon,
-r[5],r[6],totalSek,
-e.p,e.l,e.t,
-selisih
-].forEach((v,i)=>{
-const td=document.createElement('td');
-td.textContent=i>2?rupiah(v):v;
-if(i===12) td.className=Math.abs(v)>1?'text-red-600 font-bold':'text-emerald-600 font-bold';
-tr.appendChild(td);
-});
-tableBody.appendChild(tr);
-});
-
-statPeralatan.textContent=rupiah(sP);
-statAsetLain.textContent=rupiah(sL);
-statGrandTotal.textContent=rupiah(sG);
-statTotalSelisih.textContent=rupiah(sSel);
-countDone.textContent=cDone;
-countPending.textContent=filteredData.length-cDone;
-
-chartInput.data.datasets[0].data=[cDone,filteredData.length-cDone];
-chartValid.data.datasets[0].data=[cBal,filteredData.length-cBal];
-chartInput.update(); 
-chartValid.update();
+    body.appendChild(tr);
+  });
 }
 
-/* ===== EXPORT ===== */
 function exportExcel(){
-const wb=XLSX.utils.table_to_book(mainTable,{sheet:"Monitoring_BOS"});
-XLSX.writeFile(wb,"Laporan_Monitoring_BOS_2025.xlsx");
+  const wb=XLSX.utils.table_to_book(mainTable,{sheet:"Monitoring BOS"});
+  XLSX.writeFile(wb,"Monitoring_BOS_2025.xlsx");
 }
 
-async function exportPDF() {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('l', 'mm', 'a4');
-        const pageWidth = doc.internal.pageSize.getWidth();
-        const pageHeight = doc.internal.pageSize.getHeight();
-
-        const now = new Date();
-        const optionsDate = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZoneName: 'short' };
-        const timeStampStr = now.toLocaleString('id-ID', optionsDate);
-
-        // --- KOP SURAT (SESUAI STANDAR PERSURATAN) ---
-        const logoUrl = "https://upload.wikimedia.org/wikipedia/commons/e/e5/Lambang_Kabupaten_Donggala_%282015-sekarang%29.png";
-        
-        try {
-            // Posisi logo di sebelah kiri teks utama
-            doc.addImage(logoUrl, 'PNG', 25, 7, 15, 18);
-        } catch (e) {
-            console.error("Gagal memuat logo:", e);
-        }
-
-        doc.setFontSize(16);
-        doc.setFont("helvetica", "bold");
-        doc.text("PEMERINTAH KABUPATEN DONGGALA", pageWidth / 2 + 10, 12, { align: "center" });
-        
-        doc.setFontSize(13);
-        doc.text("DINAS PENDIDIKAN DAN KEBUDAYAAN", pageWidth / 2 + 10, 18, { align: "center" });
-        
-        doc.setFontSize(9);
-        doc.setFont("helvetica", "normal");
-        doc.text("Jalan Jati Kelurahan Gunung Bale, Telp (0457) 71775-71885 Kabupaten Donggala, Sulawesi Tengah", pageWidth / 2 + 10, 23, { align: "center" });
-        
-        // Garis Pembatas Kop (Double Line)
-        doc.setLineWidth(0.8);
-        doc.line(15, 27, pageWidth - 15, 27);
-        doc.setLineWidth(0.2);
-        doc.line(15, 28, pageWidth - 15, 28);
-
-        // --- JUDUL LAPORAN (DI BAWAH GARIS) ---
-        doc.setFontSize(12);
-        doc.setFont("helvetica", "bold");
-        doc.text("LAPORAN MONITORING BELANJA MODAL BOS 2025", pageWidth / 2, 36, { align: "center" });
-
-        // --- RINGKASAN DATA ---
-        doc.setFontSize(8);
-        doc.setFont("helvetica", "normal");
-        const sPer = document.getElementById('statPeralatan').innerText;
-        const sLain = document.getElementById('statAsetLain').innerText;
-        const sGrand = document.getElementById('statGrandTotal').innerText;
-        const sSel = document.getElementById('statTotalSelisih').innerText;
-        const sDone = document.getElementById('countDone').innerText;
-        const sPend = document.getElementById('countPending').innerText;
-
-        doc.text(`Total Peralatan: ${sPer}`, 15, 43);
-        doc.text(`Total Aset Lainnya: ${sLain}`, 80, 43);
-        doc.text(`Jumlah Total Rekon: ${sGrand}`, 150, 43);
-        doc.text(`Total Selisih: ${sSel}`, 15, 48);
-        doc.text(`Status Sekolah: Sudah Input (${sDone}) | Belum (${sPend})`, 80, 48);
-        doc.setFont("helvetica", "italic");
-        doc.text(`Waktu Cetak: ${timeStampStr}`, pageWidth - 15, 48, { align: 'right' });
-
-        // --- TABEL DATA ---
-        doc.autoTable({ 
-            html: '#mainTable', 
-            startY: 53, 
-            theme: 'grid',
-            styles: { fontSize: 6, cellPadding: 1.2, valign: 'middle', halign: 'center' },
-            headStyles: { fillColor: [0, 31, 63], textColor: [255, 255, 255], fontStyle: 'bold' },
-            columnStyles: {
-                0: { cellWidth: 7 }, 1: { cellWidth: 20 },
-                2: { cellWidth: 'auto', halign: 'left' },
-                3: { cellWidth: 21, halign: 'right' }, 4: { cellWidth: 21, halign: 'right' }, 5: { cellWidth: 21, halign: 'right' },
-                6: { cellWidth: 21, halign: 'right' }, 7: { cellWidth: 21, halign: 'right' }, 8: { cellWidth: 21, halign: 'right' },
-                9: { cellWidth: 21, halign: 'right' }, 10: { cellWidth: 21, halign: 'right' }, 11: { cellWidth: 21, halign: 'right' },
-                12: { cellWidth: 20, fontStyle: 'bold' }
-            }
-        });
-
-        // --- AREA TANDA TANGAN (DENGAN NIP) ---
-        let finalY = doc.lastAutoTable.finalY + 12;
-        if (finalY > pageHeight - 50) { doc.addPage(); finalY = 25; }
-
-        const colWidth = (pageWidth - 30) / 3;
-        doc.setFontSize(8);
-        doc.setFont("helvetica", "bold");
-        doc.text("Pengelola Dana BOS SMP,", 15 + (colWidth / 2), finalY, { align: "center" });
-        doc.text("Pengelola Dana BOS SD,", 15 + (colWidth / 2), finalY, { align: "center" });
-        doc.text("Pengurus Barang Disdikbud,", 15 + colWidth + (colWidth / 2), finalY, { align: "center" });
-        doc.text("Tim Verifikasi Aset,", 15 + (colWidth * 2) + (colWidth / 2), finalY, { align: "center" });
-
-        // Tempat tanda tangan (Kosong)
-        doc.setFont("helvetica", "normal");
-        doc.text("( IZRA )", 15 + (colWidth / 2), finalY + 22, { align: "center" });
-        doc.text("( TAUHID )", 15 + (colWidth / 2), finalY + 22, { align: "center" });
-        doc.text("( MA'RUF )", 15 + colWidth + (colWidth / 2), finalY + 22, { align: "center" });
-        doc.text("( MUHAMMAD KAUTSAR HASAN, S.M. )", 15 + (colWidth * 2) + (colWidth / 2), finalY + 22, { align: "center" });
-
-        // Baris NIP
-        doc.text("NIP. 198506262009031002", 15 + (colWidth / 2), finalY + 27, { align: "center" });
-        doc.text("NIP. 198506262009031003", 15 + (colWidth / 2), finalY + 27, { align: "center" });
-        doc.text("NIP. 198306262014091001", 15 + colWidth + (colWidth / 2), finalY + 27, { align: "center" });
-        doc.text("NIP. 199306122025211151", 15 + (colWidth * 2) + (colWidth / 2), finalY + 27, { align: "center" });
-
-        // Footer Halaman
-        const totalPages = doc.internal.getNumberOfPages();
-        for (let i = 1; i <= totalPages; i++) {
-            doc.setPage(i);
-            doc.setFontSize(7);
-            doc.text(`Halaman ${i} dari ${totalPages} | Sistem Monitoring Aset Belanja Modal Dana BOS Tahun 2025 `, pageWidth / 2, pageHeight - 5, { align: 'center' });
-        }
-
-        doc.save(`Laporan_BOS_Donggala_${now.getTime()}.pdf`);
-    }
 window.onload=loadData;
 </script>
 
