@@ -57,7 +57,7 @@ thead th{background:#001f3f;color:#fff}
 
 <!-- PAGINATION UTAMA -->
 <div class="flex justify-between items-center mt-2">
-  <select id="pageSizeSelect" onchange="changePageSize()" class="border px-2 py-1 rounded text-xs">
+  <select id="pageSize" onchange="changePageSize()" class="border px-2 py-1 rounded text-xs">
     <option value="10">10</option>
     <option value="25">25</option>
     <option value="50">50</option>
@@ -75,8 +75,8 @@ thead th{background:#001f3f;color:#fff}
   <div class="bg-white w-11/12 md:w-3/4 rounded p-4">
     <div class="flex justify-between mb-2">
       <h2 id="modalTitle" class="font-bold"></h2>
-      <div>
-        <button onclick="exportPDFDetail()" class="bg-blue-600 text-white px-3 rounded text-xs mr-2">
+      <div class="flex gap-2">
+        <button onclick="exportPDFDetailOfficial()" class="bg-blue-600 text-white px-2 rounded text-xs">
           PDF Detail
         </button>
         <button onclick="closeModal()">✖</button>
@@ -110,17 +110,10 @@ thead th{background:#001f3f;color:#fff}
 <script>
 const SCRIPT_URL="https://script.google.com/macros/s/AKfycbxbJ4Y1V30BynuGIHbEeelEB7hN1xqrNtvKMcXIewzeBd_ZLTw5s-c6qDJhd3-keRJm/exec";
 
-let masterData=[];
-let currentPage=1;
-let pageSize=10;
+let masterData=[]; let currentPage=1; let pageSize=10;
+let detailData=[]; let detailPage=1; const detailPageSize=10;
 
-let detailData=[];
-let detailPage=1;
-const detailPageSize=10;
-
-const rupiah=v=>new Intl.NumberFormat('id-ID',{
-  style:'currency',currency:'IDR',minimumFractionDigits:0
-}).format(v||0);
+const rupiah=v=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',minimumFractionDigits:0}).format(v||0);
 
 async function loadData(){
   const jenjang=document.getElementById('filterJenjang').value;
@@ -134,13 +127,9 @@ function updateTable(){
   const q=searchInput.value.toLowerCase();
   tableBody.innerHTML="";
 
-  const filtered=masterData.filter(r=>
-    (r[0]+" "+r[1]).toLowerCase().includes(q)
-  );
-
+  const filtered=masterData.filter(r=>(r[0]+" "+r[1]).toLowerCase().includes(q));
   const totalPages=Math.ceil(filtered.length/pageSize)||1;
   if(currentPage>totalPages) currentPage=totalPages;
-
   const start=(currentPage-1)*pageSize;
   const pageData=filtered.slice(start,start+pageSize);
   let no=start+1;
@@ -150,46 +139,29 @@ function updateTable(){
     const tr=document.createElement("tr");
     if(Math.abs(sel)>1) tr.classList.add("bg-red-50");
 
-    [
-      no++, r[0], r[1],
-      rupiah(r[2]), rupiah(r[3]),
-      rupiah(r[4]), rupiah(r[5]), rupiah(sel)
-    ].forEach((v,i)=>{
+    [no++, r[0], r[1], rupiah(r[2]), rupiah(r[3]), rupiah(r[4]), rupiah(r[5]), rupiah(sel)].forEach((v,i)=>{
       const td=document.createElement("td");
       td.textContent=v;
-      if(i===2){
-        td.onclick=()=>showDetail(r[1]);
-        td.classList.add("text-blue-600","underline","cursor-pointer");
-      }
-      if(i===7){
-        td.classList.add(sel!==0?"text-red-600":"text-emerald-600","font-bold");
-      }
+      if(i===2){ td.onclick=()=>showDetail(r[1]); td.classList.add("text-blue-600","underline","cursor-pointer"); }
+      if(i===7){ td.classList.add(sel!==0?"text-red-600":"text-emerald-600","font-bold"); }
       tr.appendChild(td);
     });
-
     tableBody.appendChild(tr);
   });
 
   pageInfo.textContent=`Halaman ${currentPage} / ${totalPages}`;
 }
 
-function nextPage(){currentPage++;updateTable();}
-function prevPage(){if(currentPage>1)currentPage--;updateTable();}
-function changePageSize(){
-  pageSize=Number(pageSizeSelect.value||pageSize);
-  currentPage=1;
-  updateTable();
-}
+function nextPage(){currentPage++; updateTable();}
+function prevPage(){if(currentPage>1) currentPage--; updateTable();}
+function changePageSize(){pageSize=Number(pageSize.value||pageSize); currentPage=1; updateTable();}
 
+// --- DETAIL ---
 async function showDetail(sekolah){
-  modal.classList.remove("hidden");
-  modal.classList.add("flex");
+  modal.classList.remove("hidden"); modal.classList.add("flex");
   modalTitle.textContent="Detail Aset - "+sekolah;
-
   const res=await fetch(`${SCRIPT_URL}?mode=detail&sekolah=${encodeURIComponent(sekolah)}`);
-  detailData=await res.json();
-  detailPage=1;
-  renderDetailPage();
+  detailData=await res.json(); detailPage=1; renderDetailPage();
 }
 
 function renderDetailPage(){
@@ -202,83 +174,68 @@ function renderDetailPage(){
     const tr=document.createElement("tr");
     r.forEach((v,i)=>{
       const td=document.createElement("td");
-      if(i===2 || i===3 || i===4){ // jumlah, harga, total
-        td.textContent = rupiah(v);
-      } else td.textContent = v;
+      // Kolom Jumlah (i=2) tetap angka, Harga & Total (i=3,4) pakai rupiah
+      td.textContent=(i===3||i===4)?rupiah(v):v;
       tr.appendChild(td);
     });
     detailBody.appendChild(tr);
   });
-
   detailPageInfo.textContent=`Halaman ${detailPage} / ${totalPages}`;
 }
 
-function nextDetailPage(){detailPage++;renderDetailPage();}
-function prevDetailPage(){if(detailPage>1)detailPage--;renderDetailPage();}
+function nextDetailPage(){detailPage++; renderDetailPage();}
+function prevDetailPage(){if(detailPage>1) detailPage--; renderDetailPage();}
+function closeModal(){modal.classList.add("hidden");}
 
-function closeModal(){
-  modal.classList.add("hidden");
-}
-
-// PDF untuk TABEL UTAMA
+// --- EXPORT PDF TABEL UTAMA ---
 function exportPDFMain(){
-  const { jsPDF } = window.jspdf;
-  const doc=new jsPDF('l','mm','a4');
-
-  doc.setFontSize(14);
-  doc.text("PEMERINTAH KABUPATEN DONGGALA",148,12,{align:'center'});
-  doc.text("DINAS PENDIDIKAN DAN KEBUDAYAAN",148,18,{align:'center'});
-  doc.line(10,22,287,22);
-
-  doc.setFontSize(11);
-  doc.text("LAPORAN MONITORING ASET BOS 2025",148,30,{align:'center'});
-
-  doc.autoTable({
-    html:'#mainTable',
-    startY:35,
-    styles:{fontSize:7}
-  });
-
+  const { jsPDF } = window.jspdf; const doc=new jsPDF('l','mm','a4');
+  doc.setFontSize(14); doc.text("PEMERINTAH KABUPATEN DONGGALA",148,12,{align:'center'});
+  doc.text("DINAS PENDIDIKAN DAN KEBUDAYAAN",148,18,{align:'center'}); doc.line(10,22,287,22);
+  doc.setFontSize(11); doc.text("LAPORAN MONITORING ASET BOS 2025",148,30,{align:'center'});
+  doc.autoTable({html:'#mainTable', startY:35, styles:{fontSize:7}});
   doc.save("Monitoring_Aset_BOS_2025.pdf");
 }
 
-// PDF untuk DETAIL BARANG (semua halaman)
-function exportPDFDetail(){
+// --- EXPORT PDF DETAIL RESMI DENGAN LOGO ---
+function exportPDFDetailOfficial(){
   if(detailData.length===0) return;
-
   const { jsPDF } = window.jspdf;
-  const doc=new jsPDF('l','mm','a4');
+  const doc = new jsPDF('l','mm','a4');
+  const sekolahName = modalTitle.textContent.replace("Detail Aset - ","");
 
-  doc.setFontSize(14);
-  doc.text("PEMERINTAH KABUPATEN DONGGALA",148,12,{align:'center'});
-  doc.text("DINAS PENDIDIKAN DAN KEBUDAYAAN",148,18,{align:'center'});
-  doc.line(10,22,287,22);
+  // Tambahkan logo (misal link publik)
+  const logoKabupaten = "https://i.imgur.com/0XzNQ3q.png"; // ganti dengan logo asli
+  const logoDinas = "https://i.imgur.com/I2K3s1x.png"; // ganti dengan logo asli
 
-  doc.setFontSize(11);
-  doc.text("RINCIAN ASET - "+modalTitle.textContent.replace("Detail Aset - ",""),148,30,{align:'center'});
+  doc.addImage(logoKabupaten,'PNG',12,8,20,20);
+  doc.addImage(logoDinas,'PNG',257,8,20,20);
 
-  let startY=35;
+  doc.setFontSize(16); doc.text("PEMERINTAH KABUPATEN DONGGALA",148,12,{align:'center'});
+  doc.setFontSize(14); doc.text("DINAS PENDIDIKAN DAN KEBUDAYAAN",148,20,{align:'center'});
+  doc.setLineWidth(0.8); doc.line(10,25,287,25);
+  doc.setFontSize(12); doc.text("LAPORAN RINCIAN ASET SEKOLAH",148,32,{align:'center'});
+  doc.text(sekolahName,148,38,{align:'center'});
 
-  // cetak semua data halaman demi halaman
-  const chunks=[];
-  for(let i=0;i<detailData.length;i+=detailPageSize){
-    chunks.push(detailData.slice(i,i+detailPageSize));
-  }
+  let startY=45; const pageSizePDF=15;
 
-  chunks.forEach((pageData,index)=>{
-    const rows=pageData.map(r=>{
-      return r.map((v,i)=>i===2||i===3||i===4?rupiah(v):v);
-    });
+  for(let i=0;i<detailData.length;i+=pageSizePDF){
+    const pageData=detailData.slice(i,i+pageSizePDF);
+    const rows=pageData.map(r=>r.map((v,idx)=>(idx===3||idx===4)?rupiah(v):v)); // Jumlah idx=2 tetap angka
     doc.autoTable({
       head:[["Judul","Kode Aset","Jumlah","Harga","Total","Asal","Keterangan"]],
       body:rows,
       startY:startY,
-      styles:{fontSize:7}
+      styles:{fontSize:8,cellPadding:2},
+      headStyles:{fillColor:[0,31,63],textColor:255,halign:'center'},
+      alternateRowStyles:{fillColor:[240,240,240]},
+      theme:'grid'
     });
-    if(index<chunks.length-1) doc.addPage();
-  });
+    if(i+pageSizePDF<detailData.length) doc.addPage();
+    startY=20;
+  }
 
-  doc.save("Detail_Aset_"+modalTitle.textContent.replace("Detail Aset - ","")+".pdf");
+  doc.save(`Rincian_Aset_${sekolahName}.pdf`);
 }
 
 window.onload=loadData;
