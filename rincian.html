@@ -31,8 +31,8 @@ thead th{background:#001f3f;color:#fff}
     <option value="SMP">SMP</option>
   </select>
 
-  <button onclick="exportPDF()" class="bg-red-600 text-white px-4 rounded">
-    PDF
+  <button onclick="exportPDFMain()" class="bg-red-600 text-white px-4 rounded">
+    PDF Tabel Utama
   </button>
 </div>
 
@@ -75,7 +75,12 @@ thead th{background:#001f3f;color:#fff}
   <div class="bg-white w-11/12 md:w-3/4 rounded p-4">
     <div class="flex justify-between mb-2">
       <h2 id="modalTitle" class="font-bold"></h2>
-      <button onclick="closeModal()">✖</button>
+      <div>
+        <button onclick="exportPDFDetail()" class="bg-blue-600 text-white px-3 rounded text-xs mr-2">
+          PDF Detail
+        </button>
+        <button onclick="closeModal()">✖</button>
+      </div>
     </div>
 
     <table class="w-full text-xs">
@@ -169,7 +174,7 @@ function updateTable(){
 }
 
 function nextPage(){currentPage++;updateTable();}
-function prevPage(){if(currentPage>1) currentPage--;updateTable();}
+function prevPage(){if(currentPage>1)currentPage--;updateTable();}
 function changePageSize(){
   pageSize=Number(pageSizeSelect.value||pageSize);
   currentPage=1;
@@ -197,12 +202,9 @@ function renderDetailPage(){
     const tr=document.createElement("tr");
     r.forEach((v,i)=>{
       const td=document.createElement("td");
-      // format hanya Jumlah (2), Harga (3), Total (4)
-      if(i === 2 || i === 3 || i === 4){
+      if(i===2 || i===3 || i===4){ // jumlah, harga, total
         td.textContent = rupiah(v);
-      } else {
-        td.textContent = v;
-      }
+      } else td.textContent = v;
       tr.appendChild(td);
     });
     detailBody.appendChild(tr);
@@ -218,7 +220,8 @@ function closeModal(){
   modal.classList.add("hidden");
 }
 
-function exportPDF(){
+// PDF untuk TABEL UTAMA
+function exportPDFMain(){
   const { jsPDF } = window.jspdf;
   const doc=new jsPDF('l','mm','a4');
 
@@ -237,6 +240,45 @@ function exportPDF(){
   });
 
   doc.save("Monitoring_Aset_BOS_2025.pdf");
+}
+
+// PDF untuk DETAIL BARANG (semua halaman)
+function exportPDFDetail(){
+  if(detailData.length===0) return;
+
+  const { jsPDF } = window.jspdf;
+  const doc=new jsPDF('l','mm','a4');
+
+  doc.setFontSize(14);
+  doc.text("PEMERINTAH KABUPATEN DONGGALA",148,12,{align:'center'});
+  doc.text("DINAS PENDIDIKAN DAN KEBUDAYAAN",148,18,{align:'center'});
+  doc.line(10,22,287,22);
+
+  doc.setFontSize(11);
+  doc.text("RINCIAN ASET - "+modalTitle.textContent.replace("Detail Aset - ",""),148,30,{align:'center'});
+
+  let startY=35;
+
+  // cetak semua data halaman demi halaman
+  const chunks=[];
+  for(let i=0;i<detailData.length;i+=detailPageSize){
+    chunks.push(detailData.slice(i,i+detailPageSize));
+  }
+
+  chunks.forEach((pageData,index)=>{
+    const rows=pageData.map(r=>{
+      return r.map((v,i)=>i===2||i===3||i===4?rupiah(v):v);
+    });
+    doc.autoTable({
+      head:[["Judul","Kode Aset","Jumlah","Harga","Total","Asal","Keterangan"]],
+      body:rows,
+      startY:startY,
+      styles:{fontSize:7}
+    });
+    if(index<chunks.length-1) doc.addPage();
+  });
+
+  doc.save("Detail_Aset_"+modalTitle.textContent.replace("Detail Aset - ","")+".pdf");
 }
 
 window.onload=loadData;
